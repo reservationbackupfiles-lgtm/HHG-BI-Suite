@@ -406,8 +406,18 @@ async function start() {
   const { data } = await sb.auth.getSession();
   if (!data.session) return loginView();
   state.user = data.session.user;
-  const { data: prof } = await sb.from("profiles").select("role").eq("id", state.user.id).maybeSingle();
+  const { data: prof, error: profileError } = await sb
+  .from("profiles")
+  .select("role")
+  .eq("id", state.user.id)
+  .maybeSingle();
+
+if (profileError) {
+  console.error("Profile role lookup failed:", profileError);
+  state.role = "viewer";
+} else {
   state.role = prof?.role || "viewer";
+}
   route();
 }
 const PAGES = { dashboard: pageDashboard, compare: pageCompare, pace: pagePace, reservations: pageReservations, admin: pageAdmin };
