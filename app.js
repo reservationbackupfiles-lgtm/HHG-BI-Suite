@@ -370,18 +370,84 @@ ${logs.length ? logs.map(l => `<tr><td>${esc(l._t || phTime(l.created_at))}</td>
   bind(["d", "fp"], st, pageAdmin);
   $("#up").onchange = e => st.up = +e.target.value; $("#snap").onchange = e => st.snap = e.target.value;
   $("#go").onclick = async () => {
-    const prop = props.find(p => p.id === +$("#up").value), snap = $("#snap").value, msg = $("#msg");
-    const jobs = [["fadr", "adr", "ADR", "adr_daily", "property_id,stay_date"], ["fres", "res", "Reservations", "reservations", "property_id,reservation_no"], ["fpace", "pace", "Pace", "pace_snapshots", "property_id,snapshot_date,stay_date"]].filter(j => $("#" + j[0]).files[0]);
-    if (!jobs.length) { msg.innerHTML = `<div class="err">Choose at least one .xlsx file.</div>`; return; }
-    $("#go").disabled = true; $("#go").innerHTML = `${ic("loader-2")}Uploading…`; lucide.createIcons(); $("#go i").classList.add("spin");
-    for (const [fid, kind, label, table, conflict] of jobs) {
-      let rows = null, result = "Saved", message = null;
-      try { rows = parseReport(kind, sheetRows(await $("#" + fid).files[0].arrayBuffer()), prop, snap); if (!rows.length) throw new Error("no data rows found"); await upsert(table, rows, conflict); }
-      catch (e) { result = "Error"; message = e.message || String(e); }
-      const entry = { user_email: state.user.email, property_id: prop.id, report: label, rows: rows?.length ?? null, result, message };
-      if (DEMO) demo().log.unshift({ ...entry, id: Date.now(), created_at: new Date().toISOString() }); else await sb.from("upload_log").insert(entry);
+    
+  $("#go").onclick = async () => {
+    const prop = props.find(p => p.id === +$("#up").value);
+    const snap = $("#snap").value;
+    const msg = $("#msg");
+
+    const jobs = [
+      ["fadr", "adr", "ADR", "adr_daily", "property_id,stay_date"],
+      ["fres", "res", "Reservations", "reservations", "property_id,reservation_no"],
+      ["fpace", "pace", "Pace", "pace_snapshots", "property_id,snapshot_date,stay_date"]
+    ].filter(j => $("#" + j[0]).files[0]);
+
+    if (!jobs.length) {
+      msg.innerHTML = `<div class="err">Choose at least one .xlsx file.</div>`;
+      return;
     }
-    D.clear(); pageAdmin();
+
+    $("#go").disabled = true;
+    $("#go").textContent = "Uploading…";
+    const results = [];
+
+    try {
+      for (const [fid, kind, label, table, conflict] of jobs) {
+        let rows = null;
+
+        try {
+          rows = parseReport(
+            kind,
+            sheetRows(await $("#" + fid).files[0].arrayBuffer()),
+            prop,
+            snap
+          );
+
+          if (!rows.length) throw new Error("No data rows found.");
+
+          await upsert(table, rows, conflict);
+
+          const entry = {
+            user_email: state.user.email,
+            property_id: prop.id,
+            report: label,
+            rows: rows.length,
+            result: "Saved",
+            message: null
+          };
+
+          if (DEMO) {
+            demo().log.unshift({
+              ...entry,
+              id: Date.now(),
+              created_at: new Date().toISOString()
+            });
+          } else {
+            const { error } = await sb.from("upload_log").insert(entry);
+            if (error) throw error;
+          }
+
+          results.push(`${label}: Saved (${rows.length} rows)`);
+        } catch (e) {
+          results.push(`${label}: ERROR — ${e.message || String(e)}`);
+        }
+      }
+
+      D.clear();
+      pageAdmin();
+
+      alert(results.join("\n"));
+    } catch (e) {
+      alert("Upload failed: " + (e.message || String(e)));
+    } finally {
+      const button = $("#go");
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Upload";
+      }
+    }
+  };
+
   };
 }
 
