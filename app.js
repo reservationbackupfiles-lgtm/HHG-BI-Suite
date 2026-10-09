@@ -158,7 +158,7 @@ ${NAV.filter(n => n[0] !== "admin" || state.role === "admin").map(n => `<a class
 }
 function paint(html) {
   $("#root").innerHTML = html;
-  window.lucide && lucide.createIcons();
+  window.lucide && if (window.lucide) window.lucide.createIcons();
   const so = $("#signout"); if (so) so.onclick = signOut;
 }
 const selHtml = (id, opts, val) => `<select class="sel" id="${id}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(val) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
