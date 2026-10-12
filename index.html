@@ -194,18 +194,66 @@ $('#forgotLink').onclick = async () => {
 function showPasswordGate(mode='first-login'){
   const recovery=mode==='recovery';
   const gate=$('#passwordGate');
+
   gate.innerHTML=`<div class="box"><h1>${recovery?'Reset password':'Create your password'}</h1><p>${recovery?'Choose a new password for your account.':'For security, set a new password before continuing.'}</p><form id="passwordForm"><label for="newPassword">New password</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Re-enter your password" required><div class="err" id="passwordErr"></div><button class="btn" id="saveNewPassword" type="submit">Save password</button></form></div>`;
+
   gate.hidden=false;
+
   $('#passwordForm').onsubmit=async e=>{
-    e.preventDefault();const a=$('#newPassword').value,b=$('#confirmPassword').value,err=$('#passwordErr'),btn=$('#saveNewPassword');
-    if(a.length<8){err.textContent='Password must be at least 8 characters.';return;}
-    if(a!==b){err.textContent='Passwords do not match.';return;}
-    btn.disabled=true;btn.textContent='Saving…';err.textContent='';
-    const {data,error}=await sb.auth.updateUser({password:a,data:{must_change_password:false}});
-    if(error){err.textContent=error.message;btn.disabled=false;btn.textContent='Save password';toast('Password could not be updated: '+error.message,'error');return;}
-    gate.hidden=true;gate.innerHTML='';$('#pw').value='';toast('Password updated successfully.');
-    if(data?.user){S.user=data.user;}
-    if($('#app').hidden && S.user){$('#login').hidden=true;$('#app').hidden=false;}
+    e.preventDefault();
+
+    const a=$('#newPassword').value;
+    const b=$('#confirmPassword').value;
+    const err=$('#passwordErr');
+    const btn=$('#saveNewPassword');
+
+    if(a.length<8){
+      err.textContent='Password must be at least 8 characters.';
+      return;
+    }
+
+    if(a!==b){
+      err.textContent='Passwords do not match.';
+      return;
+    }
+
+    btn.disabled=true;
+    btn.textContent='Saving…';
+    err.textContent='';
+
+    const {data,error}=await sb.auth.updateUser({
+      password:a,
+      data:{must_change_password:false}
+    });
+
+    if(error){
+      err.textContent=error.message;
+      btn.disabled=false;
+      btn.textContent='Save password';
+      toast('Password could not be updated: '+error.message,'error');
+      return;
+    }
+
+    if(data?.user) S.user=data.user;
+
+    gate.hidden=true;
+    gate.innerHTML='';
+    $('#pw').value='';
+
+    $('#login').hidden=true;
+    $('#app').hidden=false;
+
+    toast('Password updated successfully.');
+
+    $('#view').innerHTML='<p class="mu">Loading…</p>';
+
+    try{
+      await load();
+      show(S.view);
+    }catch(error){
+      $('#view').innerHTML='<p class="err">Dashboard failed to load. Please refresh the page.</p>';
+      console.error(error);
+    }
   };
 }
 $('#out').onclick = () => sb.auth.signOut();
