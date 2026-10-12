@@ -73,7 +73,12 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .upload-card,.summary-card,.log-card,.users-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px;margin-bottom:16px;min-width:0}
 .upload-card h3,.summary-card h3,.log-card h3,.users-card h3{margin:0 0 12px;font-size:15px}
 .upload-field{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed #b8cbd1;border-radius:7px;padding:12px;margin:8px 0 12px;color:var(--mut);background:#fff;cursor:pointer}
-.user-create{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;background:#f8fbfc}.user-create h4{margin:0 0 10px}.user-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}.user-create-fields>div{min-width:0}.user-create-fields input,.user-create-fields select,.user-role{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}.user-create-fields label{display:block;margin-bottom:5px;font-size:12px;color:var(--mut)}.user-table-wrap{max-width:100%;overflow-x:auto}.user-table-wrap table{min-width:560px}.user-role{min-width:100px}.user-save{padding:7px 10px;white-space:nowrap}@media(max-width:760px){.user-create-fields{grid-template-columns:1fr}}
+.user-create{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;background:#f8fbfc}.user-create h4{margin:0 0 10px}.user-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}.user-create-fields>div{min-width:0}.user-create-fields input,.user-create-fields select,.user-role{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}.user-create-fields label{display:block;margin-bottom:5px;font-size:12px;color:var(--mut)}.user-table-wrap{max-width:100%;overflow-x:auto}.user-table-wrap table{min-width:560px}.user-role{min-width:100px}.user-save{padding:7px 10px;white-space:nowrap}/* Small auto-dismissing confirmation toast */
+#toastHost{position:fixed;top:18px;right:18px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 28px));pointer-events:none}
+.toast{display:flex;align-items:flex-start;gap:10px;padding:12px 15px;border-radius:9px;background:#fff;color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--up);box-shadow:0 8px 26px rgba(16,36,43,.18);font-size:13px;line-height:1.4;animation:toastIn .18s ease-out;transition:opacity .22s,transform .22s}
+.toast.error{border-left-color:var(--dn)}.toast .toast-mark{font-weight:800;color:var(--up)}.toast.error .toast-mark{color:var(--dn)}.toast.hide{opacity:0;transform:translateX(12px)}
+@keyframes toastIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:760px){.user-create-fields{grid-template-columns:1fr}}
 .upload-field span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.upload-field input{width:auto;max-width:52%;padding:0;border:0;background:transparent;color:var(--mut)}
 .upload-field input::file-selector-button{display:none}
 .upload-field:focus-within,.upload-field:hover{border-color:var(--sea);background:#f8fcfc}
@@ -106,6 +111,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 <main><div class="top"><h1 id="ttl"></h1><div class="clock"><span id="d"></span><small id="t"></small><small id="acc"></small></div></div><div id="view"></div></main>
 </div>
 
+<div id="toastHost" aria-live="polite" aria-atomic="false"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -114,6 +120,14 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 <script>
 const sb = supabase.createClient(CFG.url, CFG.key);
 const $ = s => document.querySelector(s);
+function toast(message, type='success', duration=3200){
+  const host=$('#toastHost'); if(!host)return;
+  const item=document.createElement('div'); item.className='toast'+(type==='error'?' error':'');
+  const mark=document.createElement('span'); mark.className='toast-mark'; mark.textContent=type==='error'?'!':'✓';
+  const text=document.createElement('span'); text.textContent=message;
+  item.append(mark,text); host.append(item);
+  window.setTimeout(()=>{item.classList.add('hide');window.setTimeout(()=>item.remove(),260);},duration);
+}
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const fmt = n => n==null||isNaN(n) ? '–' : Math.round(n).toLocaleString('en-PH');
 const php = n => n==null||isNaN(n) ? '–' : '₱'+fmt(n);
@@ -412,16 +426,16 @@ async function loadAdminUsers(){
     const id=btn.dataset.userId,sel=box.querySelector(`.user-role[data-user-id="${id}"]`),role=sel?.value;
     btn.disabled=true;btn.textContent='Saving…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
-    if(error){alert('Could not update role: '+error.message);btn.disabled=false;btn.textContent='Save role';return;}
-    btn.textContent='Saved';
+    if(error){toast('Could not update role: '+error.message,'error');btn.disabled=false;btn.textContent='Save role';return;}
+    btn.textContent='Saved'; toast('Role updated successfully.');
   });
   $('#createUser').onclick=async()=>{
     const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
-    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';return;}
+    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';toast('Enter a valid email and a password with at least 8 characters.','error');return;}
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
-    if(error){msg.textContent='Account creation failed: '+error.message;btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created. Ask the user to sign in and change the temporary password.';
+    if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
+    msg.textContent='Account created. Ask the user to sign in and change the temporary password.'; toast('Account created successfully.');
     $('#newUserEmail').value='';$('#newUserPassword').value='';await loadAdminUsers();
   };
 }
@@ -431,9 +445,9 @@ const chunked = async (fn,rows) => { for (let i=0;i<rows.length;i+=500){ const {
 const logUp = o => sb.from('upload_log').insert({user_email:S.user.email,...o});
 async function doUpload(){
   const propertyId=+$('#upP').value, prop=S.props.find(p=>p.id===propertyId), L=m=>$('#log').textContent+=m+'\n';
-  if(!prop)return L('Choose a property.');
+  if(!prop){L('Choose a property.');toast('Choose a property before uploading.','error');return;}
   const jobs=[['ADR','fA'],['ADR','fA2'],['Reservations','fR'],['Pace','fP']].filter(([,id])=>$('#'+id).files[0]);
-  $('#log').textContent=''; if(!jobs.length)return L('Choose at least one file.'); $('#up').disabled=true;
+  $('#log').textContent=''; if(!jobs.length){L('Choose at least one file.');toast('Choose at least one report file.','error');return;} $('#up').disabled=true;
   for(const [rep,id] of jobs){
     try{
       const rows=await readRows($('#'+id).files[0]); let n=0,note='',snap=null;
@@ -469,11 +483,11 @@ async function doUpload(){
         if(!mapped.length)throw new Error('No Pace rows found.');
         await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);n=mapped.length;note=`snapshot ${snap}`;
       }
-      L(`${rep}: ${n} rows saved (${note}).`);
-      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});if(logError)L(`Log warning: ${logError.message}`);
-    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${rep}: ${m}`);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError)L(`Log warning: ${logError.message}`);}
+      L(`${rep}: ${n} rows saved (${note}).`); toast(`${rep}: ${n} rows saved successfully.`);
+      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}
+    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${rep}: ${m}`);toast(`${rep} upload failed: ${m}`,'error',5000);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}}
   }
-  await load();L('Done.');$('#up').disabled=false;await loadLog();
+  await load();L('Done.');toast('Upload process completed.');$('#up').disabled=false;await loadLog();
 }
 /* Users (admin) */
 async function users(){
@@ -487,16 +501,16 @@ async function users(){
     const id=btn.dataset.userId,role=$('#view').querySelector(`.user-role[data-user-id="${id}"]`)?.value;
     btn.disabled=true;btn.textContent='Saving…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
-    if(error){alert('Could not update role: '+error.message);btn.disabled=false;btn.textContent='Save role';return;}
-    btn.textContent='Saved';
+    if(error){toast('Could not update role: '+error.message,'error');btn.disabled=false;btn.textContent='Save role';return;}
+    btn.textContent='Saved'; toast('Role updated successfully.');
   });
   $('#createUser').onclick=async()=>{
     const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
-    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';return;}
+    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';toast('Enter a valid email and a password with at least 8 characters.','error');return;}
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
-    if(error){msg.textContent='Account creation failed: '+error.message;btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created successfully. Ask the user to sign in and change the temporary password.';
+    if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
+    msg.textContent='Account created successfully. Ask the user to sign in and change the temporary password.'; toast('Account created successfully.');
     await users();
   };
 }
