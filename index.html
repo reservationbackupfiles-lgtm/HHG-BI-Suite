@@ -574,7 +574,29 @@ async function admin(){
     <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
     <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
     <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
-  $('#up').onclick = () => { const propName = $('#upP').selectedOptions[0]?.textContent || 'the selected property'; const count = [1,2,3,4].filter(i => $('#f'+i).files[0]).length; if (!count) { toast('Choose at least one report file.','error'); return; } if (await showUploadConfirm(`Are you sure you want to upload <b>${count}</b> selected report file(s) for <b>${propName}</b>?`)) doUpload(); }; $('#ld').onchange=e=>{S.logDate=e.target.value||today();S.logPage=1;loadLog();}; await loadLog(); await loadAdminUsers();
+  $('#up').onclick = async () => {
+  const propName = $('#upP').selectedOptions[0]?.textContent || 'the selected property';
+  const count = [1,2,3,4].filter(i => $('#f'+i).files[0]).length;
+
+  if (!count) {
+    toast('Choose at least one report file.','error');
+    return;
+  }
+
+  if (await showUploadConfirm(`Are you sure you want to upload <b>${count}</b> selected report file(s) for <b>${propName}</b>?`)) {
+    doUpload();
+  }
+};
+
+$('#ld').onchange = e => {
+  S.logDate = e.target.value || today();
+  S.logPage = 1;
+  loadLog();
+};
+
+await loadLog();
+await loadAdminUsers();
+}
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
