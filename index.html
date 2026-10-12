@@ -35,6 +35,14 @@ main{padding:0 28px 28px;min-width:0}
 .c{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .c small{color:var(--mut);font-weight:700}.c b{display:block;font-size:24px;font-weight:800}.c i{font-style:normal;color:var(--mut);font-size:12.5px;display:block}
 .p{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;overflow-x:auto}.p h3{margin:0 0 10px;font-size:15px}
+/* Keep long reservation summaries compact; scroll within each card. */
+.res-scroll-card{height:520px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.res-scroll-card h3{flex:0 0 auto}
+.res-scroll-card .res-table-scroll{overflow:auto;min-height:0;flex:1}
+.res-scroll-card table{width:100%}
+.res-scroll-card thead th{position:sticky;top:0;background:#fff;z-index:2}
+.res-scroll-card .res-table-scroll::-webkit-scrollbar{width:10px;height:10px}
+.res-scroll-card .res-table-scroll::-webkit-scrollbar-thumb{background:#c9d5da;border-radius:8px}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px}.two>.p{margin:0}.two{margin-bottom:16px}
 .ch{position:relative;height:340px}
 table{border-collapse:collapse;width:100%}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
@@ -166,7 +174,7 @@ async function load(){
     const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
     S.adr = rawAdr.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],year:+d.slice(0,4),month:+d.slice(5,7),rooms_sold:+r.rooms_sold||0,room_revenue:+r.room_revenue||0,rooms_available:+r.rooms_available||0};}).filter(r=>r.property&&r.year&&r.month);
     S.res = rawRes.map(r=>({ ...r, property:codeById[String(r.property_id)], room_nights:+r.nights||0, grand_total:+r.revenue||0, suggested_deposit:0, source_category:(/booking|agoda|expedia|ota/i.test(r.source||'')?'OTA':'Direct'), check_in:r.check_in, check_out:r.check_out, booking_date:r.booking_date, room_type:'', status:r.status||'', source:r.source||'' })).filter(r=>r.property);
-    S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.month_no&&r.day);
+    S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; }
 }
 
@@ -253,11 +261,11 @@ function pace(){
   $('#ttl').textContent = 'Pace';
   if (!S.pace.length) return empty('No pace data yet. An admin needs to upload the Pace Report.');
   const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
-  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.month_no] = r);
-  const mo = m+S.po, nd = dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
+  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
+  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
   const cs = S.props.filter(p=>S.pace.some(r=>r.property===p.code));
-  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
-  const cap = c => { for (let d=ld; d>=1; d--){ const r=M[c+'|'+iso(d)+'|'+mo]; if (r) return +r.ty_capacity; } return 0; };
+  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
+  const cap = c => { for (let d=ld; d>=1; d--){ const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; if (r) return +r.ty_capacity; } return 0; };
   const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
   const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
   const TA = cs.reduce((s,p)=>s+cap(p.code),0);
@@ -276,13 +284,13 @@ function pace(){
   body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
   body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
   const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
-  const tabs = [0,1,2,3,4].filter(o=>m+o<=12).map(o=>`<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${o?(o+1)*30+' days':'This month'} · ${MN[m+o-1]}</button>`).join('');
+  const tabs = [0,1,2,3].map(o=>{const dt=new Date(y,m-1+o,1);return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${o?o*30+' days':'This month'} · ${MN[dt.getMonth()]}</button>`;}).join('');
   $('#view').innerHTML = `<div class="bar">${tabs}</div><div class="cards">
    <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
    <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
    <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
    <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
-  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${y}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
+  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
   <p class="note">Each column is one day's upload. Bold = room nights on the books for the month; grey = occupancy. Green = added since the last upload, red = lost (for example cancellations). Yellow = no file that day.</p></div>`;
 }
 
@@ -328,9 +336,9 @@ function res(){
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
   <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div><div class="c"><small>Value lost</small><b class="dn">${php(T.lost)}</b><i>from cancelled bookings</i></div></div>
-  <div class="p"><h3>Reservations and cancellations by month (check-in month)</h3>${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div>
+  <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
-  <div class="p"><h3>By booking date</h3>${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}
+  <div class="p res-scroll-card"><h3>By booking date</h3><div class="res-table-scroll">${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}</div>
   <p class="note">OTA ${fmt(ota)} (${pct(rs.length?ota/rs.length:NaN)}) · Direct ${fmt(rs.filter(r=>r.source_category==='Direct').length)}</p></div></div>
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
   bind(['rp','st','sr'], res);
