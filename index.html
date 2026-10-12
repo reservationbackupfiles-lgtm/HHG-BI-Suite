@@ -94,6 +94,18 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .log-card table th:last-child,.log-card table td:last-child{min-width:180px;white-space:normal}
 .status-ok{color:var(--up);font-weight:700}.status-error{color:var(--dn);font-weight:700}
 @media(max-width:760px){.admin-grid{grid-template-columns:1fr}.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.upload-field{align-items:flex-start;flex-direction:column}.upload-field input{max-width:100%}#app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.who{width:100%;margin:0}main{padding:0 14px 20px}.pop{position:fixed;left:12px;right:12px;top:150px;width:auto}.two{grid-template-columns:1fr}}
+
+/* Compact themed confirmation dialog */
+.confirm-backdrop{position:fixed;inset:0;background:rgba(16,36,43,.38);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999}
+.confirm-dialog{width:min(100%,390px);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 48px rgba(16,36,43,.22);overflow:hidden}
+.confirm-dialog-head{padding:15px 18px 10px;border-bottom:1px solid var(--line);font-weight:800;font-size:15px;color:var(--ink)}
+.confirm-dialog-body{padding:16px 18px;color:var(--mut);font-size:13px}
+.confirm-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 16px}
+.confirm-dialog-actions button{border-radius:7px;padding:8px 14px;border:1px solid var(--line);cursor:pointer;font-weight:700}
+.confirm-dialog-actions .confirm-cancel{background:transparent;color:var(--ink)}
+.confirm-dialog-actions .confirm-ok{background:var(--sea);border-color:var(--sea);color:#fff}
+.confirm-dialog-actions button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+
 </style>
 </head>
 <body>
@@ -415,6 +427,24 @@ function res(){
   bind(['rp','st','sr'], res);
 }
 
+function showUploadConfirm(message){
+  return new Promise(resolve=>{
+    const wrap=document.createElement('div');
+    wrap.className='confirm-backdrop';
+    wrap.innerHTML=`<section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="uploadConfirmTitle"><div class="confirm-dialog-head" id="uploadConfirmTitle">Confirm Upload</div><div class="confirm-dialog-body">${message}</div><div class="confirm-dialog-actions"><button type="button" class="confirm-cancel">Cancel</button><button type="button" class="confirm-ok">OK</button></div></section>`;
+    const finish=value=>{wrap.remove();resolve(value);};
+    wrap.querySelector('.confirm-cancel').onclick=()=>finish(false);
+    wrap.querySelector('.confirm-ok').onclick=()=>finish(true);
+    wrap.addEventListener('click',e=>{if(e.target===wrap)finish(false);});
+    const onKey=e=>{if(e.key==='Escape'){document.removeEventListener('keydown',onKey);finish(false);}};
+    document.addEventListener('keydown',onKey);
+    wrap.querySelector('.confirm-cancel').addEventListener('click',()=>document.removeEventListener('keydown',onKey),{once:true});
+    wrap.querySelector('.confirm-ok').addEventListener('click',()=>document.removeEventListener('keydown',onKey),{once:true});
+    document.body.appendChild(wrap);
+    wrap.querySelector('.confirm-ok').focus();
+  });
+}
+
 /* Admin */
 const addDay = d => new Date(Date.parse(d+'T00:00:00Z')+864e5).toISOString().slice(0,10);
 async function admin(){
@@ -423,16 +453,17 @@ async function admin(){
   const propOptions = S.props.map(p=>[p.id,p.name]);
   $('#view').innerHTML = `<div class="admin-grid"><section class="upload-card"><h3>Upload reports</h3>
     <div class="admin-select"><label for="upP">Property</label><select id="upP">${opts(propOptions,S.props[0]?.id)}</select></div>
-    <label class="upload-field"><span>ADR report 1: 2025 and 2026</span><input id="fA" type="file" accept=".xlsx,.csv"></label>
-    <label class="upload-field"><span>ADR report 2: 2027</span><input id="fA2" type="file" accept=".xlsx,.csv"></label>
-    <label class="upload-field"><span>Reservations by Booking Date</span><input id="fR" type="file" accept=".csv,.xlsx"></label>
-    <label class="upload-field"><span>Pace Report</span><input id="fP" type="file" accept=".csv,.xlsx"></label>
+    <p class="note">Choose the report type for each file. Filenames can be different; the selected report type tells the system how to process each file. Supports .xlsx, .xls, and .csv.</p>
+    <label class="upload-field"><span>File 1</span><select id="type1"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f1" type="file" accept=".xlsx,.xls,.csv"></label>
+    <label class="upload-field"><span>File 2</span><select id="type2"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f2" type="file" accept=".xlsx,.xls,.csv"></label>
+    <label class="upload-field"><span>File 3</span><select id="type3"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f3" type="file" accept=".xlsx,.xls,.csv"></label>
+    <label class="upload-field"><span>File 4</span><select id="type4"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f4" type="file" accept=".xlsx,.xls,.csv"></label>
     <div class="admin-select"><label for="snap">Pace snapshot date</label><input id="snap" type="date" value="${today()}"></div>
     <button class="btn" id="up">Upload</button></section>
     <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
     <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
     <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
-  $('#up').onclick = doUpload; $('#ld').onchange=e=>{S.logDate=e.target.value||today();S.logPage=1;loadLog();}; await loadLog(); await loadAdminUsers();
+  $('#up').onclick = () => { const propName = $('#upP').selectedOptions[0]?.textContent || 'the selected property'; const count = [1,2,3,4].filter(i => $('#f'+i).files[0]).length; if (!count) { toast('Choose at least one report file.','error'); return; } if (await showUploadConfirm(`Are you sure you want to upload <b>${count}</b> selected report file(s) for <b>${propName}</b>?`)) doUpload(); }; $('#ld').onchange=e=>{S.logDate=e.target.value||today();S.logPage=1;loadLog();}; await loadLog(); await loadAdminUsers();
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
@@ -483,11 +514,14 @@ const logUp = o => sb.from('upload_log').insert({user_email:S.user.email,...o});
 async function doUpload(){
   const propertyId=+$('#upP').value, prop=S.props.find(p=>p.id===propertyId), L=m=>$('#log').textContent+=m+'\n';
   if(!prop){L('Choose a property.');toast('Choose a property before uploading.','error');return;}
-  const jobs=[['ADR','fA'],['ADR','fA2'],['Reservations','fR'],['Pace','fP']].filter(([,id])=>$('#'+id).files[0]);
-  $('#log').textContent=''; if(!jobs.length){L('Choose at least one file.');toast('Choose at least one report file.','error');return;} $('#up').disabled=true;
-  for(const [rep,id] of jobs){
+  const jobs=[1,2,3,4].map(i=>({rep:$('#type'+i).value,id:'f'+i,file:$('#f'+i).files[0]})).filter(j=>j.file).map(j=>({...j,label:j.rep==='ADR'?'ADR':j.rep==='Reservations'?'Reservations by Booking Date':'Pace Report'}));
+  $('#log').textContent=''; if(!jobs.length){L('Choose at least one file.');toast('Choose at least one report file.','error');return;}
+  const selectedList=jobs.map(j=>`${j.label}: ${j.file.name}`).join(' · ');
+  toast(`Confirmed: ${jobs.length} file(s) for ${prop.name}. Upload starting.`);
+  $('#up').disabled=true;
+  for(const {rep,id,file,label} of jobs){
     try{
-      const rows=await readRows($('#'+id).files[0]); let n=0,note='',snap=null;
+      const rows=await readRows(file); let n=0,note='',snap=null;
       if(rep==='ADR'){
         const r=Imp.parseAdr(rows,prop.code);
         // The Cloudbeds ADR export is monthly. Store one monthly aggregate on day 01,
@@ -520,11 +554,11 @@ async function doUpload(){
         if(!mapped.length)throw new Error('No Pace rows found.');
         await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);n=mapped.length;note=`snapshot ${snap}`;
       }
-      L(`${rep}: ${n} rows saved (${note}).`); toast(`${rep}: ${n} rows saved successfully.`);
+      L(`${label}: ${n} rows saved (${note}).`); toast(`${label}: ${n} rows saved successfully.`);
       const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}
-    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${rep}: ${m}`);toast(`${rep} upload failed: ${m}`,'error',5000);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}}
+    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${label}: ${m}`);toast(`${label} upload failed: ${m}`,'error',5000);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}}
   }
-  await load();L('Done.');toast('Upload process completed.');$('#up').disabled=false;await loadLog();
+  await load();L('Done.');toast('Upload process completed.');await loadLog();
 }
 /* Users (admin) */
 async function users(){
