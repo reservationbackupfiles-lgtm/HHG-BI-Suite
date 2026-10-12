@@ -80,7 +80,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .admin-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .admin-summary .c{padding:13px}.admin-summary .c b{font-size:23px}
 .log-filter{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.log-filter>div{min-width:145px}
-#logbox{max-height:420px;overflow:auto;min-width:0}#logbox table{min-width:850px;width:max-content;max-width:none}.log-card table td,.log-card table th{font-size:13px}
+.log-pager{display:flex;align-items:center;justify-content:flex-start;gap:9px;flex-wrap:wrap;padding:12px 0;position:sticky;left:0;background:var(--card)}.log-pager button{padding:6px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;font-size:18px}.log-pager button:disabled{opacity:.35;cursor:not-allowed}.log-pager select{width:auto;min-width:100px;padding:7px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}.log-page-count{font-size:12px;color:var(--mut)}#logbox{max-height:420px;overflow:auto;min-width:0}#logbox table{min-width:850px;width:max-content;max-width:none}.log-card table td,.log-card table th{font-size:13px}
 .log-card table th:first-child,.log-card table td:first-child{min-width:180px;text-align:left}
 .log-card table th:nth-child(2),.log-card table td:nth-child(2){min-width:170px}
 .log-card table th:last-child,.log-card table td:last-child{min-width:180px;white-space:normal}
@@ -120,7 +120,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today()};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1};
 let charts = [];
 
 /* clock */
@@ -380,7 +380,7 @@ async function admin(){
     <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
     <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
     <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
-  $('#up').onclick = doUpload; $('#ld').onchange=e=>{S.logDate=e.target.value||today();loadLog();}; await loadLog(); await loadAdminUsers();
+  $('#up').onclick = doUpload; $('#ld').onchange=e=>{S.logDate=e.target.value||today();S.logPage=1;loadLog();}; await loadLog(); await loadAdminUsers();
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
@@ -390,8 +390,16 @@ async function loadLog(){
   const wait=S.props.filter(p=>!ok.has(p.id)).map(p=>p.name);
   $('#summary').innerHTML=`<div class="c"><small>Properties updated</small><b>${ok.size} of ${S.props.length}</b><i>${wait.length} waiting</i></div><div class="c"><small>Files received</small><b>${data.length}</b><i>${data.filter(r=>!goodRows.includes(r)).length} with errors</i></div>`;
   $('#waiting').textContent=wait.length?'Waiting: '+wait.join(' · '):'All properties updated.';
-  const visibleLogs=data.slice(0,15);
-  $('#logbox').innerHTML=data.length?tbl(['Date / Time','Property','Report','Rows','Result'],visibleLogs.map(r=>[new Date(r.created_at).toLocaleString('en-PH',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`]))+(data.length>15?`<p class="note">Showing the latest 15 of ${data.length} logs for this date.</p>`:''):'<p class="mu">No uploads on this day.</p>';
+  const pageSize=15, totalPages=Math.max(1,Math.ceil(data.length/pageSize));
+  S.logPage=Math.min(Math.max(1,S.logPage||1),totalPages);
+  const start=(S.logPage-1)*pageSize, visibleLogs=data.slice(start,start+pageSize);
+  const tableHtml=tbl(['Date / Time','Property','Report','Rows','Result'],visibleLogs.map(r=>[new Date(r.created_at).toLocaleString('en-PH',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`]));
+  const pager=data.length?`<div class="log-pager"><button type="button" id="logPrev" ${S.logPage<=1?'disabled':''} aria-label="Previous page">‹</button><span>Page <b>${S.logPage}</b> of <b>${totalPages}</b></span><select id="logPageSelect" aria-label="Choose log page">${Array.from({length:totalPages},(_,i)=>`<option value="${i+1}" ${i+1===S.logPage?'selected':''}>Page ${i+1}</option>`).join('')}</select><button type="button" id="logNext" ${S.logPage>=totalPages?'disabled':''} aria-label="Next page">›</button><span class="log-page-count">Showing ${data.length?start+1:0}–${Math.min(start+pageSize,data.length)} of ${data.length} logs · 15 per page</span></div>`:'';
+  $('#logbox').innerHTML=data.length?tableHtml+pager:'<p class="mu">No uploads on this day.</p>';
+  const prev=$('#logPrev'),next=$('#logNext'),pageSelect=$('#logPageSelect');
+  if(prev)prev.onclick=()=>{if(S.logPage>1){S.logPage--;loadLog();}};
+  if(next)next.onclick=()=>{if(S.logPage<totalPages){S.logPage++;loadLog();}};
+  if(pageSelect)pageSelect.onchange=e=>{S.logPage=+e.target.value||1;loadLog();};
 }
 async function loadAdminUsers(){
   const box=$('#userbox'); if(!box)return;
