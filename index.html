@@ -73,6 +73,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .upload-card,.summary-card,.log-card,.users-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px;margin-bottom:16px;min-width:0}
 .upload-card h3,.summary-card h3,.log-card h3,.users-card h3{margin:0 0 12px;font-size:15px}
 .upload-field{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed #b8cbd1;border-radius:7px;padding:12px;margin:8px 0 12px;color:var(--mut);background:#fff;cursor:pointer}
+.user-create{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;background:#f8fbfc}.user-create h4{margin:0 0 10px}.user-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}.user-create-fields>div{min-width:0}.user-create-fields input,.user-create-fields select,.user-role{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}.user-create-fields label{display:block;margin-bottom:5px;font-size:12px;color:var(--mut)}.user-table-wrap{max-width:100%;overflow-x:auto}.user-table-wrap table{min-width:560px}.user-role{min-width:100px}.user-save{padding:7px 10px;white-space:nowrap}@media(max-width:760px){.user-create-fields{grid-template-columns:1fr}}
 .upload-field span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.upload-field input{width:auto;max-width:52%;padding:0;border:0;background:transparent;color:var(--mut)}
 .upload-field input::file-selector-button{display:none}
 .upload-field:focus-within,.upload-field:hover{border-color:var(--sea);background:#f8fcfc}
@@ -403,9 +404,26 @@ async function loadLog(){
 }
 async function loadAdminUsers(){
   const box=$('#userbox'); if(!box)return;
-  const {data,error}=await sb.from('profiles').select('id,email,role');
+  const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
   if(error){box.innerHTML=`<p class="err">${error.message}</p>`;return;}
-  box.innerHTML=data.length?tbl(['Email','Role',''],data.map(u=>[u.email||'—',u.role||'viewer',u.id===S.user.id?'Current user':'Managed in Supabase'])):'<p class="mu">No profiles found.</p>';
+  const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
+  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Requires the Supabase Edge Function <code>admin-create-user</code> included separately. Never put the service-role key in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
+  box.querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.userId,sel=box.querySelector(`.user-role[data-user-id="${id}"]`),role=sel?.value;
+    btn.disabled=true;btn.textContent='Saving…';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
+    if(error){alert('Could not update role: '+error.message);btn.disabled=false;btn.textContent='Save role';return;}
+    btn.textContent='Saved';
+  });
+  $('#createUser').onclick=async()=>{
+    const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
+    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';return;}
+    const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
+    if(error){msg.textContent='Account creation failed: '+error.message;btn.disabled=false;btn.textContent='Create account';return;}
+    msg.textContent='Account created. Ask the user to sign in and change the temporary password.';
+    $('#newUserEmail').value='';$('#newUserPassword').value='';await loadAdminUsers();
+  };
 }
 
 const readRows = async f => { const wb = XLSX.read(await f.arrayBuffer(),{type:'array'}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null,raw:true}); };
