@@ -173,7 +173,23 @@ async function load(){
     S.pm = Object.fromEntries(S.props.map(p=>[p.code,p]));
     const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
     S.adr = rawAdr.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],year:+d.slice(0,4),month:+d.slice(5,7),rooms_sold:+r.rooms_sold||0,room_revenue:+r.room_revenue||0,rooms_available:+r.rooms_available||0};}).filter(r=>r.property&&r.year&&r.month);
-    S.res = rawRes.map(r=>({ ...r, property:codeById[String(r.property_id)], room_nights:+r.nights||0, grand_total:+r.revenue||0, suggested_deposit:0, source_category:(/booking|agoda|expedia|ota/i.test(r.source||'')?'OTA':'Direct'), check_in:r.check_in, check_out:r.check_out, booking_date:r.booking_date, guest_name:r.guest_name||'', room_type:r.room_type||'', status:r.status||'', source:r.source||'' })).filter(r=>r.property);
+    S.res = rawRes.map(r => ({
+  ...r,
+  property: codeById[String(r.property_id)],
+  room_nights: +r.nights || 0,
+  grand_total: +r.revenue || 0,
+  suggested_deposit: 0,
+  source_category: /booking|agoda|expedia|ota/i.test(r.source || '')
+    ? 'OTA'
+    : 'Direct',
+  guest_name: r.guest_name || '',
+  room_type: r.room_type || '',
+  check_in: r.check_in,
+  check_out: r.check_out,
+  booking_date: r.booking_date,
+  status: r.status || '',
+  source: r.source || ''
+})).filter(r => r.property);
     S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; }
 }
