@@ -158,7 +158,7 @@ ${NAV.filter(n => n[0] !== "admin" || state.role === "admin").map(n => `<a class
 }
 function paint(html) {
   $("#root").innerHTML = html;
-  window.lucide && if (window.lucide) window.lucide.createIcons();
+  if (window.lucide) window.lucide.createIcons();
   const so = $("#signout"); if (so) so.onclick = signOut;
 }
 const selHtml = (id, opts, val) => `<select class="sel" id="${id}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(val) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
@@ -301,41 +301,100 @@ ${props.map(p => ({ p, x: stats(rows.filter(r => r.property_id === p.id)) })).fi
 
 /* ---------- admin: upload & logs ---------- */
 const ALIAS = {
-  adr: { date: ["date", "stay date", "business date", "day"], sold: ["rooms sold", "room nights sold", "occupied rooms", "rooms occupied", "sold"], avail: ["rooms available", "available rooms", "rooms avail", "capacity", "available"], rev: ["room revenue", "rooms revenue", "total room revenue", "revenue"] },
-  pace: { day: ["day", "stay date", "date", "stay day"], nights: ["room nights", "room nights on the books", "rooms on the books", "otb", "rooms", "nights"] },
-  res: { no: ["reservation no", "reservation no.", "reservation number", "confirmation", "confirmation no", "res no", "booking id", "reservation id", "reservation"], book: ["booking date", "booked", "date booked", "created", "booked on"], ci: ["check-in", "check in", "checkin", "arrival", "arrival date"], co: ["check-out", "check out", "checkout", "departure", "departure date"], nights: ["nights", "room nights", "los", "no. of nights"], rev: ["room revenue", "revenue", "total", "amount", "total amount", "total revenue"], status: ["status", "booking status"], src: ["source", "channel", "ota"] }
+  adr: {},
+  res: {
+    no: ["reservation number", "reservation no", "confirmation", "booking id", "reservation id"],
+    book: ["booking date time - property", "booking date", "date booked", "booked on"],
+    ci: ["check-in date", "check-in", "check in", "checkin", "arrival date", "arrival"],
+    co: ["check-out date", "check-out", "check out", "checkout", "departure date", "departure"],
+    nights: ["room nights", "nights", "los", "no. of nights"],
+    rev: ["room revenue total", "room revenue", "total room revenue", "revenue", "grand total", "total reservation amount"],
+    status: ["reservation status", "status", "booking status"],
+    src: ["reservation source", "reservation source category", "source", "channel", "ota"]
+  }
 };
-function sheetRows(buf) {
-  const wb = XLSX.read(buf, { type: "array" }), ws = wb.Sheets[wb.SheetNames[0]];
+function sheetRows(buf, filename = "") {
+  const isCsv = /\.csv$/i.test(filename);
+  const wb = XLSX.read(buf, { type: "array", raw: true, cellDates: true, ...(isCsv ? { FS: "," } : {}) });
+  const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 }
-function mapCols(grid, alias, need) {
-  const norm = s => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-  for (let h = 0; h < Math.min(grid.length, 20); h++) {
-    const hdr = grid[h].map(norm), idx = {};
-    for (const k in alias) { const j = hdr.findIndex(c => alias[k].includes(c)); if (j >= 0) idx[k] = j; }
-    if (need.every(k => k in idx)) return { idx, data: grid.slice(h + 1) };
+const normHead = s => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+function findHeader(grid, aliases, start = 0, stop = 20) {
+  for (let h = start; h < Math.min(grid.length, stop); h++) {
+    const hdr = grid[h].map(normHead);
+    const idx = {};
+    for (const k in aliases) {
+      const exact = hdr.findIndex(c => aliases[k].includes(c));
+      const partial = exact < 0 ? hdr.findIndex(c => aliases[k].some(a => c.startsWith(a))) : exact;
+      if (partial >= 0) idx[k] = partial;
+    }
+    if (Object.keys(idx).length) return { row: h, hdr, idx };
   }
-  const first = grid.slice(0, 20).map(r => r.map(norm));
-  const missing = need.filter(k => !first.some(r => r.some(c => alias[k].includes(c))));
-  throw new Error("missing " + (missing.map(k => alias[k][0]).join(", ") || "header") + " column");
+  return null;
 }
-function toIso(v) {
+function toIso(v, defaultYear = today().y) {
   if (v == null || v === "") return null;
   if (typeof v === "number") { const d = new Date(Math.round((v - 25569) * 864e5)); return iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); }
   if (v instanceof Date) return iso(v.getFullYear(), v.getMonth() + 1, v.getDate());
-  const d = new Date(String(v)); return isNaN(d) ? null : iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  const s = String(v).trim();
+  let m = s.match(/^(\d{1,2})[-/](\d{1,2})$/);
+  if (m) return iso(defaultYear, +m[1], +m[2]);
+  m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (m) return iso(+m[1], +m[2], +m[3]);
+  const d = new Date(s); return isNaN(d) ? null : iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 const num = v => { const n = parseFloat(String(v ?? "0").replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; };
 function parseReport(kind, grid, prop, snap) {
-  if (kind === "adr") { const { idx: i, data } = mapCols(grid, ALIAS.adr, ["date", "sold", "rev"]);
-    return data.map(r => ({ property_id: prop.id, stay_date: toIso(r[i.date]), rooms_sold: Math.round(num(r[i.sold])), rooms_available: i.avail != null ? Math.round(num(r[i.avail])) : prop.rooms, room_revenue: num(r[i.rev]) })).filter(r => r.stay_date); }
-  if (kind === "pace") { const { idx: i, data } = mapCols(grid, ALIAS.pace, ["day", "nights"]);
-    return data.map(r => ({ property_id: prop.id, snapshot_date: snap, stay_date: toIso(r[i.day]), room_nights: Math.round(num(r[i.nights])) })).filter(r => r.stay_date); }
-  const { idx: i, data } = mapCols(grid, ALIAS.res, ["ci", "co"]);
-  return data.map((r, n) => { const ci = toIso(r[i.ci]), co = toIso(r[i.co]), bk = i.book != null ? toIso(r[i.book]) : null;
-    const nights = i.nights != null ? Math.round(num(r[i.nights])) : Math.max(0, Math.round((new Date(co) - new Date(ci)) / 864e5));
-    return { property_id: prop.id, reservation_no: String(i.no != null && r[i.no] != null ? r[i.no] : `${bk}|${ci}|${co}|${n}`), booking_date: bk, check_in: ci, check_out: co, nights, revenue: i.rev != null ? num(r[i.rev]) : 0, status: i.status != null && /cancel/i.test(String(r[i.status] ?? "")) ? "Cancelled" : "Confirmed", source: i.src != null ? r[i.src] : null }; }).filter(r => r.check_in && r.check_out);
+  if (kind === "adr") {
+    const h = findHeader(grid, { date: ["date"], adr25: ["adr 2025"], sold25: ["accommodations booked 2025"], rev25: ["room rates 2025"], adr26: ["adr 2026"], sold26: ["accommodations booked 2026"], rev26: ["room rates 2026"] });
+    if (!h || !("date" in h.idx) || !("rev25" in h.idx) || !("rev26" in h.idx)) throw new Error("ADR headers not recognized; expected monthly ADR 2025/2026 columns.");
+    const out = [];
+    for (const r of grid.slice(h.row + 1)) {
+      const mon = String(r[h.idx.date] ?? "").trim();
+      const mi = MON.findIndex(m => m.toLowerCase() === mon.slice(0,3).toLowerCase());
+      if (mi < 0) continue;
+      for (const y of [2025, 2026]) {
+        const rev = num(r[h.idx[y === 2025 ? "rev25" : "rev26"]]);
+        const sold = num(r[h.idx[y === 2025 ? "sold25" : "sold26"]]);
+        const days = dim(y, mi + 1);
+        out.push({ property_id: prop.id, stay_date: iso(y, mi + 1, 1), rooms_sold: Math.round(sold), rooms_available: prop.rooms * days, room_revenue: rev });
+      }
+    }
+    return out;
+  }
+  if (kind === "pace") {
+    // Cloudbeds Pace CSV has three header rows: year group, metric, aggregation.
+    const h = findHeader(grid, { stay: ["stay date"] }, 0, 5);
+    if (!h) throw new Error("Pace CSV missing Stay Date header.");
+    const metricRow = grid[h.row + 1] || [], data = grid.slice(h.row + 3), out = [];
+    const tyCols = {};
+    for (let c = 1; c < metricRow.length; c++) tyCols[normHead(metricRow[c])] = c;
+    const roomsCol = tyCols["rooms_sold"] ?? tyCols["capacity_count"];
+    if (roomsCol == null) throw new Error("Pace CSV missing This Year rooms_sold column.");
+    const year = +(snap || today().iso).slice(0,4);
+    for (const r of data) {
+      const md = String(r[h.idx.stay] ?? "").trim();
+      if (!/^\d{1,2}-\d{1,2}$/.test(md)) continue;
+      const stay = toIso(md, year);
+      if (!stay) continue;
+      out.push({ property_id: prop.id, snapshot_date: snap, stay_date: stay, room_nights: Math.round(num(r[roomsCol])) });
+    }
+    return out;
+  }
+  const h = findHeader(grid, ALIAS.res, 0, 20);
+  if (!h || h.idx.ci == null || h.idx.co == null) throw new Error("Reservations CSV missing Check-In Date or Check-Out Date header.");
+  const data = grid.slice(h.row + 1), out = [];
+  data.forEach((r, n) => {
+    const ci = toIso(r[h.idx.ci]), co = toIso(r[h.idx.co]), bk = h.idx.book != null ? toIso(r[h.idx.book]) : null;
+    if (!ci || !co) return;
+    const nights = h.idx.nights != null && r[h.idx.nights] != null ? Math.round(num(r[h.idx.nights])) : Math.max(0, Math.round((new Date(co) - new Date(ci)) / 864e5));
+    const status = h.idx.status != null ? String(r[h.idx.status] ?? "Confirmed") : "Confirmed";
+    const sourceIdx = h.idx.src != null ? h.idx.src : null;
+    const no = h.idx.no != null && r[h.idx.no] != null && String(r[h.idx.no]).trim() ? String(r[h.idx.no]).trim() : `${bk || "no-booking-date"}|${ci}|${co}|${n}`;
+    out.push({ property_id: prop.id, reservation_no: no, booking_date: bk, check_in: ci, check_out: co, nights, revenue: num(r[h.idx.rev]), status: /cancel/i.test(status) ? "Cancelled" : status, source: sourceIdx != null ? r[sourceIdx] : null });
+  });
+  return out;
 }
 async function upsert(table, rows, conflict) {
   if (DEMO) return;
@@ -353,12 +412,12 @@ async function pageAdmin() {
   const dayLogs = logAll.filter(l => DEMO || phDate(l.created_at) === st.d);
   const upd = new Set(dayLogs.filter(l => l.result === "Saved").map(l => l.property_id)), waiting = props.filter(p => !upd.has(p.id));
   const pname = id => props.find(p => p.id === id)?.name || "–";
-  const drop = (id, label) => `<div class="drop"><span>${ic("file-spreadsheet")}${label}</span><input type="file" id="${id}" accept=".xlsx,.xls"></div>`;
+  const drop = (id, label, accept) => `<div class="drop"><span>${ic("file-spreadsheet")}${label}</span><input type="file" id="${id}" accept="${accept}"></div>`;
   paint(shell("Upload & logs", "upload-cloud", `
 <div class="bar">${selHtml("d", days.map((d, i) => [d, i ? `Log date: ${d}` : "Log date: today"]), st.d)}${selHtml("fp", propOpts(props), st.fp)}</div>
 <div class="two"><div class="p f"><h3>${ic("upload-cloud")}Upload reports</h3><div id="msg"></div>
 <label for="up">Property</label>${selHtml("up", props.map(p => [p.id, p.name]), st.up).replace('class="sel"', 'class="sel w" style="width:100%"')}
-<div style="margin-top:12px">${drop("fadr", "ADR report")}${drop("fres", "Reservations by Booking Date")}${drop("fpace", "Pace Report")}</div>
+<div style="margin-top:12px">${drop("fadr", "ADR report", ".xlsx,.xls")}${drop("fres", "Reservations by Booking Date", ".csv,.xlsx,.xls")}${drop("fpace", "Pace Report", ".csv,.xlsx,.xls")}</div>
 <label for="snap">Pace snapshot date</label><input id="snap" type="date" value="${st.snap}">
 <button class="btn" id="go" style="margin-top:16px">${ic("upload")}Upload</button></div>
 <div class="p"><h3>${ic("clipboard-check")}Summary for ${st.d}</h3><div class="cards" style="grid-template-columns:1fr 1fr">
@@ -369,8 +428,6 @@ ${logs.length ? logs.map(l => `<tr><td>${esc(l._t || phTime(l.created_at))}</td>
 <p class="mu" style="margin:10px 0 0">Every upload is saved with date, time and user. Pick any past day to see its summary.</p></div>`));
   bind(["d", "fp"], st, pageAdmin);
   $("#up").onchange = e => st.up = +e.target.value; $("#snap").onchange = e => st.snap = e.target.value;
-  $("#go").onclick = async () => {
-    
   $("#go").onclick = async () => {
     const prop = props.find(p => p.id === +$("#up").value);
     const snap = $("#snap").value;
@@ -383,7 +440,7 @@ ${logs.length ? logs.map(l => `<tr><td>${esc(l._t || phTime(l.created_at))}</td>
     ].filter(j => $("#" + j[0]).files[0]);
 
     if (!jobs.length) {
-      msg.innerHTML = `<div class="err">Choose at least one .xlsx file.</div>`;
+      msg.innerHTML = `<div class="err">Choose at least one report file.</div>`;
       return;
     }
 
@@ -398,7 +455,7 @@ ${logs.length ? logs.map(l => `<tr><td>${esc(l._t || phTime(l.created_at))}</td>
         try {
           rows = parseReport(
             kind,
-            sheetRows(await $("#" + fid).files[0].arrayBuffer()),
+            sheetRows(await $("#" + fid).files[0].arrayBuffer(), $("#" + fid).files[0].name),
             prop,
             snap
           );
@@ -446,8 +503,6 @@ ${logs.length ? logs.map(l => `<tr><td>${esc(l._t || phTime(l.created_at))}</td>
         button.textContent = "Upload";
       }
     }
-  };
-
   };
 }
 
