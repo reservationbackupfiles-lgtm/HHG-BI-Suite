@@ -9,7 +9,7 @@ insert into properties (code, name, total_rooms) values
   ('NBR','Nacpan Beach Resort',26), ('NBG','Nacpan Beach Glamping',19),
   ('NBV','Nacpan Beach Villas',15), ('JBH','J Boutique Hotel',14),
   ('HZG','Z Garden Hotel',28),
-  ('VV','Villa V',0)  -- TODO: set the real code and room count
+  ('VV','Villa V',39)  -- TODO: set the real code and room count
 on conflict (code) do nothing;
 
 create table if not exists profiles (
