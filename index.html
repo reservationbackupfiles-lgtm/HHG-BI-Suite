@@ -475,13 +475,30 @@ async function doUpload(){
   }
   await load();L('Done.');$('#up').disabled=false;await loadLog();
 }
-/* Users (admin): this schema stores role only; active/date controls are not available. */
+/* Users (admin) */
 async function users(){
   $('#ttl').textContent='Users';
   if(S.role!=='admin')return empty('Admins only.');
   const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
   if(error)return empty(error.message);
-  $('#view').innerHTML=`<div class="p"><h3>Users and access</h3>${tbl(['Email','Role','Status'],data.map(u=>[u.email||'—',u.role||'viewer',u.id===S.user.id?'Current user':'Managed in Supabase']))}<p class="note">This database schema currently stores user role only. Active status and date restrictions are not configured in the profiles table.</p></div>`;
+  const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
+  $('#view').innerHTML=`<div class="p users-card"><h3>Users and access</h3><div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com"></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters"></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account in Supabase Auth and assigns the selected role.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div></div>`;
+  $('#view').querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.userId,role=$('#view').querySelector(`.user-role[data-user-id="${id}"]`)?.value;
+    btn.disabled=true;btn.textContent='Saving…';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
+    if(error){alert('Could not update role: '+error.message);btn.disabled=false;btn.textContent='Save role';return;}
+    btn.textContent='Saved';
+  });
+  $('#createUser').onclick=async()=>{
+    const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
+    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';return;}
+    const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
+    if(error){msg.textContent='Account creation failed: '+error.message;btn.disabled=false;btn.textContent='Create account';return;}
+    msg.textContent='Account created successfully. Ask the user to sign in and change the temporary password.';
+    await users();
+  };
 }
 /* clicks: filters, date picker, pace tabs */
 const A = {
