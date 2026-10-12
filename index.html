@@ -597,7 +597,6 @@ $('#ld').onchange = e => {
 await loadLog();
 await loadAdminUsers();
 }
-}
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
   if(error){$('#logbox').innerHTML=`<p class="err">${error.message}</p>`;return;}
