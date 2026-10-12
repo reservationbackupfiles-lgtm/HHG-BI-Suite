@@ -81,7 +81,35 @@
   function parseRes(rows, code) {
     const hi = find(rows, n => n.includes('reservationstatus') && n.includes('checkindate'));
     if (hi < 0) fail('the "Reservation Status / Check-In Date" header', rows);
-    const keys = rows[hi].map(norm), g = (r, k) => r[keys.indexOf(k)];
+    const keys = rows[hi].map(norm);
+    // Accept the exact Cloudbeds column names, plus common export variants.
+    const aliases = {
+      bookingdatetimeproperty: ['bookingdatetimeproperty', 'bookingdate', 'bookingdatetime'],
+      reservationnumber: ['reservationnumber', 'reservationno', 'confirmationnumber'],
+      reservationstatus: ['reservationstatus', 'status'],
+      checkindate: ['checkindate', 'checkin'],
+      checkoutdate: ['checkoutdate', 'checkout'],
+      primaryguestfullname: ['primaryguestfullname', 'guestname', 'guestfullname'],
+      roomtypes: ['roomtypes', 'roomtype', 'accommodationname'],
+      reservationsource: ['reservationsource', 'source'],
+      reservationsourcecategory: ['reservationsourcecategory', 'sourcecategory'],
+      roomnights: ['roomnights', 'nights'],
+      guestcount: ['guestcount', 'guests'],
+      suggesteddeposit: ['suggesteddeposit'],
+      grandtotal: ['grandtotal', 'total'],
+      roomrevenuetotal: ['roomrevenuetotal', 'roomrevenue'],
+      totalreservationtaxes: ['totalreservationtaxes', 'reservationtaxes'],
+      reservationpaidamount: ['reservationpaidamount', 'paidamount'],
+      reservationbalancedue: ['reservationbalancedue', 'balancedue']
+    };
+    const colIndex = k => {
+      for (const alias of (aliases[k] || [k])) {
+        const i = keys.indexOf(norm(alias));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const g = (r, k) => { const i = colIndex(k); return i < 0 ? null : r[i]; };
     const out = [];
     for (const r of rows.slice(hi + 1)) {
       const bd = iso(g(r, 'bookingdatetimeproperty'));
@@ -90,7 +118,7 @@
       let nights = num(g(r, 'roomnights'));
       if (nights == null && cin && cout) nights = Math.round((new Date(cout) - new Date(cin)) / 864e5);
       out.push({ property: code, reservation_no: g(r, 'reservationnumber') || null, booking_date: bd, status: g(r, 'reservationstatus'),
-        guest_name: g(r, 'primaryguestfullname'), room_type: g(r, 'roomtypes'), source: g(r, 'reservationsource'), source_category: g(r, 'reservationsourcecategory'),
+        guest_name: String(g(r, 'primaryguestfullname') ?? '').trim() || null, room_type: String(g(r, 'roomtypes') ?? '').trim() || null, source: g(r, 'reservationsource'), source_category: g(r, 'reservationsourcecategory'),
         check_in: cin, check_out: cout, room_nights: nights, guests: num(g(r, 'guestcount')),
         suggested_deposit: num(g(r, 'suggesteddeposit')), grand_total: num(g(r, 'grandtotal')), room_revenue: num(g(r, 'roomrevenuetotal')),
         taxes: num(g(r, 'totalreservationtaxes')), paid: num(g(r, 'reservationpaidamount')), balance_due: num(g(r, 'reservationbalancedue')) });
