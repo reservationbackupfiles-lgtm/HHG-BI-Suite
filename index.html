@@ -132,7 +132,8 @@ async function fetchAll(t, mod){
 }
 async function start(user){
   S.user = user;
-  const {data:p} = await sb.from('profiles').select('role,active,view_from,view_to').eq('id',user.id).maybeSingle();
+ const {data:p, error:profileError} = await sb.from('profiles').select('role').eq('id',user.id).maybeSingle();
+if (profileError) throw profileError;
   if (p && p.active===false){ await sb.auth.signOut(); $('#lerr').textContent = 'This account is inactive. Ask an admin.'; return; }
   S.role = p?.role || 'viewer';
   $('#me').textContent = user.email+' ('+S.role+')'; $('#navAdmin').hidden = $('#navUsers').hidden = S.role!=='admin';
