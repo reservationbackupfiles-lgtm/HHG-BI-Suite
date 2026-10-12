@@ -238,15 +238,60 @@ async function fetchAll(t, mod){
 }
 async function start(user){
   S.user = user;
-  const {data:p,error:profileError} = await sb.from('profiles').select('role').eq('id',user.id).maybeSingle();
-  if (profileError) { $('#lerr').textContent = profileError.message; return; }
+
+  const meta = user.user_metadata || {};
+  const expiresAt = meta.temporary_password_expires_at
+    ? Date.parse(meta.temporary_password_expires_at)
+    : 0;
+
+  // Block expired temporary passwords
+  if (
+    meta.must_change_password === true &&
+    expiresAt &&
+    Date.now() > expiresAt
+  ) {
+    await sb.auth.signOut();
+    $('#lerr').textContent =
+      'Your temporary password has expired. Please contact the HHG BI Suite administrator for a new one.';
+    toast('Temporary password expired. Contact the administrator.', 'error', 5000);
+    return;
+  }
+
+  // Load profile and role
+  const {data:p, error:profileError} = await sb
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    $('#lerr').textContent = profileError.message;
+    return;
+  }
+
   S.role = p?.role || 'viewer';
-  $('#me').textContent = user.email+' ('+S.role+')'; $('#navAdmin').hidden = $('#navUsers').hidden = S.role!=='admin';
-  $('#acc').textContent = S.role!=='admin' && (p?.view_from||p?.view_to) ? 'Your access: '+(p.view_from||'start')+' to '+(p.view_to||'latest') : '';
-  $('#login').hidden = true; $('#app').hidden = false;
+
+  $('#me').textContent = user.email + ' (' + S.role + ')';
+  $('#navAdmin').hidden = $('#navUsers').hidden = S.role !== 'admin';
+
+  $('#acc').textContent =
+    S.role !== 'admin' && (p?.view_from || p?.view_to)
+      ? 'Your access: ' + (p.view_from || 'start') + ' to ' + (p.view_to || 'latest')
+      : '';
+
+  $('#login').hidden = true;
+  $('#app').hidden = false;
+
+  // Force password change BEFORE loading dashboard data
+  if (meta.must_change_password === true) {
+    $('#view').innerHTML = '';
+    showPasswordGate('first-login');
+    return;
+  }
+
   $('#view').innerHTML = '<p class="mu">Loading…</p>';
-  await load(); show(S.view);
-  if(user.user_metadata?.must_change_password===true) showPasswordGate('first-login');
+  await load();
+  show(S.view);
 }
 async function load(){
   try{
