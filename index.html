@@ -12,6 +12,8 @@ body{margin:0;font:14px/1.45 Manrope,system-ui,sans-serif;background:var(--bg);c
 [hidden]{display:none!important}button,select,input{font:inherit}
 .up{color:var(--up)}.dn{color:var(--dn)}.mu{color:var(--mut)}.up,.dn{font-weight:700}
 #login{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--ink)}
+.login-links{display:flex;justify-content:flex-end;margin-top:8px;font-size:12.5px}.login-links a{color:var(--sea);text-decoration:none;cursor:pointer}.login-links a:hover{text-decoration:underline}
+#passwordGate{position:fixed;inset:0;z-index:99998;background:rgba(16,36,43,.72);display:grid;place-items:center;padding:20px}#passwordGate .box{max-width:420px;box-shadow:0 16px 48px rgba(0,0,0,.25)}#passwordGate .btn{width:100%}
 .box{background:#fff;border-radius:10px;padding:32px;width:100%;max-width:380px}
 .box h1{margin:0;font-size:24px;text-align:center}.box p{text-align:center;color:var(--mut);margin:4px 0 8px}
 label{display:block;font-weight:700;font-size:13px;margin:12px 0 4px}
@@ -96,8 +98,9 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 </head>
 <body>
 <div id="login"><div class="box"><h1>HHG BI SUITE</h1><p>Sign in to view reports.</p>
-<label for="em">Email</label><input id="em" type="email" autocomplete="username">
-<label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+<label for="em">Email</label><input id="em" type="email" autocomplete="off" placeholder="Enter your email">
+<label for="pw">Password</label><input id="pw" type="password" autocomplete="new-password" placeholder="Enter your password">
+<div class="login-links"><a id="forgotLink">Forgot password?</a></div>
 <button class="btn" id="go" style="width:100%">Sign in</button><div class="err" id="lerr"></div>
 <p style="font-size:12.5px" id="lclock"></p></div></div>
 
@@ -112,6 +115,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 </div>
 
 <div id="toastHost" aria-live="polite" aria-atomic="false"></div>
+<div id="passwordGate" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -147,17 +151,49 @@ function tick(){
 }
 tick(); setInterval(tick, 1000);
 
-/* auth */
+/* auth and password setup */
+$('#em').value = '';
+$('#pw').value = '';
 $('#go').onclick = async () => {
   $('#lerr').textContent = '';
-  const {error} = await sb.auth.signInWithPassword({email:$('#em').value.trim(), password:$('#pw').value});
-  if (error) $('#lerr').textContent = error.message;
+  const email=$('#em').value.trim(), password=$('#pw').value;
+  if(!email||!password){$('#lerr').textContent='Enter your email and password.';return;}
+  const btn=$('#go');btn.disabled=true;btn.textContent='Signing in…';
+  const {error} = await sb.auth.signInWithPassword({email, password});
+  btn.disabled=false;btn.textContent='Sign in';
+  if (error) { $('#lerr').textContent = error.message; toast('Sign-in failed. Check your email and password.','error'); }
 };
 $('#pw').onkeydown = e => { if (e.key==='Enter') $('#go').click(); };
+$('#forgotLink').onclick = async () => {
+  const email=$('#em').value.trim();
+  if(!email){$('#lerr').textContent='Enter your email first, then click Forgot password?';$('#em').focus();return;}
+  $('#lerr').textContent='';
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
+  if(error){$('#lerr').textContent=error.message;toast('Could not send password reset email: '+error.message,'error');return;}
+  toast('If that email is registered, a password reset link has been sent.');
+};
+function showPasswordGate(mode='first-login'){
+  const recovery=mode==='recovery';
+  const gate=$('#passwordGate');
+  gate.innerHTML=`<div class="box"><h1>${recovery?'Reset password':'Create your password'}</h1><p>${recovery?'Choose a new password for your account.':'For security, set a new password before continuing.'}</p><form id="passwordForm"><label for="newPassword">New password</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Re-enter your password" required><div class="err" id="passwordErr"></div><button class="btn" id="saveNewPassword" type="submit">Save password</button></form></div>`;
+  gate.hidden=false;
+  $('#passwordForm').onsubmit=async e=>{
+    e.preventDefault();const a=$('#newPassword').value,b=$('#confirmPassword').value,err=$('#passwordErr'),btn=$('#saveNewPassword');
+    if(a.length<8){err.textContent='Password must be at least 8 characters.';return;}
+    if(a!==b){err.textContent='Passwords do not match.';return;}
+    btn.disabled=true;btn.textContent='Saving…';err.textContent='';
+    const {data,error}=await sb.auth.updateUser({password:a,data:{must_change_password:false}});
+    if(error){err.textContent=error.message;btn.disabled=false;btn.textContent='Save password';toast('Password could not be updated: '+error.message,'error');return;}
+    gate.hidden=true;gate.innerHTML='';$('#pw').value='';toast('Password updated successfully.');
+    if(data?.user){S.user=data.user;}
+    if($('#app').hidden && S.user){$('#login').hidden=true;$('#app').hidden=false;}
+  };
+}
 $('#out').onclick = () => sb.auth.signOut();
 let cur = null;
-sb.auth.onAuthStateChange((_e, s) => {
-  if (!s){ cur=null; $('#app').hidden=true; $('#login').hidden=false; return; }
+sb.auth.onAuthStateChange((event, s) => {
+  if(event==='PASSWORD_RECOVERY' && s){cur=s.user.id;setTimeout(()=>showPasswordGate('recovery'),0);return;}
+  if (!s){ cur=null; S.user=null; $('#app').hidden=true; $('#login').hidden=false; $('#passwordGate').hidden=true; $('#em').value='';$('#pw').value=''; return; }
   if (cur===s.user.id) return;
   cur = s.user.id; setTimeout(() => start(s.user), 0);
 });
@@ -180,6 +216,7 @@ async function start(user){
   $('#login').hidden = true; $('#app').hidden = false;
   $('#view').innerHTML = '<p class="mu">Loading…</p>';
   await load(); show(S.view);
+  if(user.user_metadata?.must_change_password===true) showPasswordGate('first-login');
 }
 async function load(){
   try{
