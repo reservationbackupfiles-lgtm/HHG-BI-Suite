@@ -2,5 +2,5 @@
 // NEVER put the service_role key in this repository.
 window.CFG = {
   url: "https://ueflhrlvclewvcfbnkmx.supabase.co",
-  key: "PASTE_YOUR_ANON_PUBLIC_KEY_HERE" // Supabase > Project Settings > API > anon public
+  key: "sb_publishable_lRzE8tVF1_jtUVZaXsBo_w_wzFtMIL2" // Supabase > Project Settings > API > anon public
 };
