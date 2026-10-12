@@ -81,6 +81,9 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .admin-summary .c{padding:13px}.admin-summary .c b{font-size:23px}
 .log-filter{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.log-filter>div{min-width:145px}
 .log-card table td,.log-card table th{font-size:13px}
+.log-card table th:first-child,.log-card table td:first-child{min-width:180px;text-align:left}
+.log-card table th:nth-child(2),.log-card table td:nth-child(2){min-width:170px}
+.log-card table th:last-child,.log-card table td:last-child{min-width:180px;white-space:normal}
 .status-ok{color:var(--up);font-weight:700}.status-error{color:var(--dn);font-weight:700}
 @media(max-width:760px){.admin-grid{grid-template-columns:1fr}.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.upload-field{align-items:flex-start;flex-direction:column}.upload-field input{max-width:100%}#app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.who{width:100%;margin:0}main{padding:0 14px 20px}.pop{position:fixed;left:12px;right:12px;top:150px;width:auto}.two{grid-template-columns:1fr}}
 </style>
@@ -387,7 +390,8 @@ async function loadLog(){
   const wait=S.props.filter(p=>!ok.has(p.id)).map(p=>p.name);
   $('#summary').innerHTML=`<div class="c"><small>Properties updated</small><b>${ok.size} of ${S.props.length}</b><i>${wait.length} waiting</i></div><div class="c"><small>Files received</small><b>${data.length}</b><i>${data.filter(r=>!goodRows.includes(r)).length} with errors</i></div>`;
   $('#waiting').textContent=wait.length?'Waiting: '+wait.join(' · '):'All properties updated.';
-  $('#logbox').innerHTML=data.length?tbl(['Time','Property','Report','Rows','Result'],data.map(r=>[new Date(r.created_at).toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`])):'<p class="mu">No uploads on this day.</p>';
+  const visibleLogs=data.slice(0,15);
+  $('#logbox').innerHTML=data.length?tbl(['Date / Time','Property','Report','Rows','Result'],visibleLogs.map(r=>[new Date(r.created_at).toLocaleString('en-PH',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`]))+(data.length>15?`<p class="note">Showing the latest 15 of ${data.length} logs for this date.</p>`:''):'<p class="mu">No uploads on this day.</p>';
 }
 async function loadAdminUsers(){
   const box=$('#userbox'); if(!box)return;
