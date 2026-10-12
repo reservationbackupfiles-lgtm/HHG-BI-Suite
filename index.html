@@ -417,7 +417,19 @@ async function doUpload(){
       }
       if(rep==='Reservations'){
         const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
-        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({property_id:propertyId,reservation_no:String(x.reservation_no),booking_date:x.booking_date,check_in:x.check_in,check_out:x.check_out,nights:x.room_nights||0,revenue:x.grand_total||0,status:x.status||'',source:x.source||'',guest_name:x.guest_name||'',room_type:x.room_type||''}));
+        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({
+  property_id:propertyId,
+  reservation_no:String(x.reservation_no),
+  booking_date:x.booking_date,
+  check_in:x.check_in,
+  check_out:x.check_out,
+  nights:x.room_nights||0,
+  revenue:x.grand_total||0,
+  status:x.status||'',
+  source:x.source||'',
+  ...(x.guest_name ? {guest_name:x.guest_name} : {}),
+  ...(x.room_type ? {room_type:x.room_type} : {})
+}));
         if(!mapped.length)throw new Error('No rows with reservation numbers were found; no existing data was changed.');
         await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);n=mapped.length;note=r.note+' (upserted; existing rows not deleted)';
       }
