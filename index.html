@@ -171,9 +171,16 @@ $('#go').onclick = async () => {
   const email=$('#em').value.trim(), password=$('#pw').value;
   if(!email||!password){$('#lerr').textContent='Enter your email and password.';return;}
   const btn=$('#go');btn.disabled=true;btn.textContent='Signing in…';
-  const {error} = await sb.auth.signInWithPassword({email, password});
+  const {data,error} = await sb.auth.signInWithPassword({email, password});
   btn.disabled=false;btn.textContent='Sign in';
-  if (error) { $('#lerr').textContent = error.message; toast('Sign-in failed. Check your email and password.','error'); }
+  if (error) { $('#lerr').textContent = error.message; toast('Sign-in failed. Check your email and password.','error'); return; }
+  const meta=data?.user?.user_metadata||{};
+  const expiresAt=meta.temporary_password_expires_at ? Date.parse(meta.temporary_password_expires_at) : 0;
+  if(meta.must_change_password===true && expiresAt && Date.now()>expiresAt){
+    await sb.auth.signOut();
+    $('#lerr').textContent='Your temporary password has expired. Please contact the HHG BI Suite administrator for a new one.';
+    toast('Temporary password expired. Contact the administrator.','error',5000);
+  }
 };
 $('#pw').onkeydown = e => { if (e.key==='Enter') $('#go').click(); };
 $('#forgotLink').onclick = async () => {
@@ -206,6 +213,17 @@ let cur = null;
 sb.auth.onAuthStateChange((event, s) => {
   if(event==='PASSWORD_RECOVERY' && s){cur=s.user.id;setTimeout(()=>showPasswordGate('recovery'),0);return;}
   if (!s){ cur=null; S.user=null; $('#app').hidden=true; $('#login').hidden=false; $('#passwordGate').hidden=true; $('#em').value='';$('#pw').value=''; return; }
+  const meta=s.user.user_metadata||{};
+  const expiresAt=meta.temporary_password_expires_at ? Date.parse(meta.temporary_password_expires_at) : 0;
+  if(meta.must_change_password===true && expiresAt && Date.now()>expiresAt){
+    cur=null;
+    setTimeout(async()=>{
+      await sb.auth.signOut();
+      $('#lerr').textContent='Your temporary password has expired. Please contact the HHG BI Suite administrator for a new one.';
+      toast('Temporary password expired. Contact the administrator.','error',5000);
+    },0);
+    return;
+  }
   if (cur===s.user.id) return;
   cur = s.user.id; setTimeout(() => start(s.user), 0);
 });
@@ -489,7 +507,7 @@ async function loadAdminUsers(){
   const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
   if(error){box.innerHTML=`<p class="err">${error.message}</p>`;return;}
   const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
-  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Requires the Supabase Edge Function <code>admin-create-user</code> included separately. Never put the service-role key in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
+  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account and emails the temporary login credentials. Temporary password expires after 24 hours. User must change it at first login. Never put service-role or email-provider keys in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
   box.querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
     const id=btn.dataset.userId,sel=box.querySelector(`.user-role[data-user-id="${id}"]`),role=sel?.value;
     btn.disabled=true;btn.textContent='Saving…';
@@ -503,7 +521,7 @@ async function loadAdminUsers(){
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
     if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created. Ask the user to sign in and change the temporary password.'; toast('Account created successfully.');
+    msg.textContent='Account created and invitation email sent. The temporary password expires in 24 hours; the user must change it at first login.'; toast('Account created and invitation email sent.');
     $('#newUserEmail').value='';$('#newUserPassword').value='';await loadAdminUsers();
   };
 }
@@ -581,7 +599,7 @@ async function users(){
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
     if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created successfully. Ask the user to sign in and change the temporary password.'; toast('Account created successfully.');
+    msg.textContent='Account created and invitation email sent. The temporary password expires in 24 hours; the user must change it at first login.'; toast('Account created and invitation email sent.');
     await users();
   };
 }
