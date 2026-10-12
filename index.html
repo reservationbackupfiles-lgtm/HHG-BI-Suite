@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HHG BI SUITE</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#10242B;--sea:#0E7C86;--sun:#F2B134;--bg:#F2F5F6;--line:#DDE5E8;--mut:#5E7480;--up:#157F5B;--dn:#B03A2E}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 Manrope,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+[hidden]{display:none!important}button,select,input{font:inherit}
+.up{color:var(--up)}.dn{color:var(--dn)}.mu{color:var(--mut)}.up,.dn{font-weight:700}
+#login{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--ink)}
+.box{background:#fff;border-radius:10px;padding:32px;width:100%;max-width:380px}
+.box h1{margin:0;font-size:24px;text-align:center}.box p{text-align:center;color:var(--mut);margin:4px 0 8px}
+label{display:block;font-weight:700;font-size:13px;margin:12px 0 4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:#fff}
+:focus-visible{outline:2px solid var(--sea);outline-offset:1px}
+.btn{background:var(--ink);color:#fff;border:0;border-radius:6px;padding:10px 16px;font-weight:700;cursor:pointer;margin-top:16px}
+.btn:hover{background:var(--sea)}.btn:disabled{opacity:.5}
+.err{color:var(--dn);font-size:13px;min-height:18px}
+#app{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+aside{background:var(--ink);color:#cfe0e4;padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.brand{color:#fff;font-weight:800;font-size:19px;padding:0 10px 16px}.brand b{color:var(--sun)}
+.nav{background:none;border:0;color:inherit;text-align:left;padding:9px 10px;border-radius:6px;cursor:pointer}
+.nav:hover{background:#1b3640}.nav.on{background:var(--sea);color:#fff;font-weight:700}
+.who{margin-top:auto;font-size:12px;padding:0 10px;word-break:break-all}.who a{color:var(--sun);cursor:pointer;display:block;margin-top:6px}
+main{padding:0 28px 28px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 0;gap:12px;flex-wrap:wrap}
+.top h1{margin:0;font-size:22px}.clock{text-align:right;font-weight:700}.clock small{display:block;color:var(--mut);font-weight:500}
+.bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}.bar>div{min-width:130px}.bar label{margin:0 0 3px}
+.tab{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer}.tab.on{background:var(--sea);color:#fff;border-color:var(--sea);font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.c{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.c small{color:var(--mut);font-weight:700}.c b{display:block;font-size:24px;font-weight:800}.c i{font-style:normal;color:var(--mut);font-size:12.5px;display:block}
+.p{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;overflow-x:auto}.p h3{margin:0 0 10px;font-size:15px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px}.two>.p{margin:0}.two{margin-bottom:16px}
+.ch{position:relative;height:340px}
+table{border-collapse:collapse;width:100%}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-size:13px}tr.tot td{font-weight:800;border-top:2px solid var(--ink)}
+.bx{display:inline-block;height:7px;border-radius:3px;background:var(--dn);vertical-align:middle;margin-left:8px}
+pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-height:70px;white-space:pre-wrap;font-size:13px}
+.note{color:var(--mut);font-size:13px;margin:8px 0 0}
+.pill{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #C9D5DA;border-radius:999px;padding:3px 12px;white-space:nowrap}.pill.act{border-color:var(--sea);background:#EAF5F6}
+.pill select{width:auto;border:0;background:transparent;padding:5px 2px;font-weight:700}.cb{border:0;background:none;padding:5px 2px;cursor:pointer;color:var(--ink)}
+.rst{background:none;border:1px solid #C9D5DA;border-radius:999px;padding:6px 14px;font-weight:700;color:var(--mut);cursor:pointer}
+.chipw{position:relative}
+.pop{position:absolute;top:46px;left:0;z-index:20;width:330px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(16,36,43,.2)}
+.ph{display:flex;gap:8px;align-items:center;margin-bottom:12px}.ps{display:flex;flex:1;border:1px solid #C9D5DA;border-radius:8px;overflow:hidden}.ps select{border:0;border-radius:0}
+.nb{width:38px;height:38px;border:1px solid #C9D5DA;border-radius:8px;background:#fff;font-size:18px;cursor:pointer}
+.wk,.gd{display:grid;grid-template-columns:repeat(7,1fr)}.wk span{text-align:center;font-size:12px;color:var(--mut);padding:4px 0}
+.dy{height:36px;border:0;background:none;cursor:pointer;border-radius:8px;color:var(--ink)}
+.dy.in{background:#DCEFF1;color:#0B5B63;border-radius:0}.dy.ed{background:var(--sea);color:#fff;font-weight:700}.dy.ed.st:not(.en){border-radius:8px 0 0 8px}.dy.ed.en:not(.st){border-radius:0 8px 8px 0}
+.sl{margin:12px 0;font-size:13px;color:var(--mut);text-align:center}.pa{display:flex;gap:10px}.pa button{flex:1;padding:10px;border-radius:8px;font-weight:700;cursor:pointer}
+.cn{background:#fff;border:1px solid #C9D5DA;color:var(--ink)}.ap{background:var(--sea);border:1px solid var(--sea);color:#fff}.ap:disabled{opacity:.4;cursor:not-allowed}
+.dm{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0}.dm th,.dm td{text-align:center;min-width:64px;padding:9px 8px;font-size:15px}
+.dm th{background:#F7F9FA;font-size:12px}.dm small{display:block;color:var(--mut);font-size:12px}.dm small.up{color:var(--up)}.dm small.dn{color:var(--dn)}
+.dm .f{position:sticky;left:0;background:#fff;text-align:left;min-width:200px;z-index:1;border-right:2px solid var(--line)}.dm th.f{background:#F7F9FA}
+.dm .now{background:#E3F2F3}.dm .no{background:#FFF4D6}.dm .no small{color:#8A5A00}.dm .tr td{border-top:2px solid var(--ink)}
+.dm .sub{display:none}.dm.open .sub{display:table-row}.dm .sub .f{padding-left:26px;background:#FAFCFC}.dm .sub td{font-size:14px}
+.lb{cursor:pointer;border:0;background:none;font-weight:700;padding:0}.lb::before{content:'▸ '}.dm.open .lb::before{content:'▾ '}
+/* Upload & logs refresh */
+.admin-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.upload-card,.summary-card,.log-card,.users-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px;margin-bottom:16px;min-width:0}
+.upload-card h3,.summary-card h3,.log-card h3,.users-card h3{margin:0 0 12px;font-size:15px}
+.upload-field{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed #b8cbd1;border-radius:7px;padding:12px;margin:8px 0 12px;color:var(--mut);background:#fff;cursor:pointer}
+.upload-field span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.upload-field input{width:auto;max-width:52%;padding:0;border:0;background:transparent;color:var(--mut)}
+.upload-field input::file-selector-button{display:none}
+.upload-field:focus-within,.upload-field:hover{border-color:var(--sea);background:#f8fcfc}
+.admin-select{margin-bottom:12px}.admin-select label,.date-filter label{margin:0 0 5px}
+.admin-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-summary .c{padding:13px}.admin-summary .c b{font-size:23px}
+.log-filter{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.log-filter>div{min-width:145px}
+.log-card table td,.log-card table th{font-size:13px}
+.status-ok{color:var(--up);font-weight:700}.status-error{color:var(--dn);font-weight:700}
+@media(max-width:760px){.admin-grid{grid-template-columns:1fr}.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.upload-field{align-items:flex-start;flex-direction:column}.upload-field input{max-width:100%}#app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.who{width:100%;margin:0}main{padding:0 14px 20px}.pop{position:fixed;left:12px;right:12px;top:150px;width:auto}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login"><div class="box"><h1>HHG BI SUITE</h1><p>Sign in to view reports.</p>
+<label for="em">Email</label><input id="em" type="email" autocomplete="username">
+<label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+<button class="btn" id="go" style="width:100%">Sign in</button><div class="err" id="lerr"></div>
+<p style="font-size:12.5px" id="lclock"></p></div></div>
+
+<div id="app" hidden>
+<aside><div class="brand">HHG <b>BI SUITE</b></div>
+<button class="nav" data-v="dash">Dashboard</button><button class="nav" data-v="compare">Compare</button>
+<button class="nav" data-v="pace">Pace</button><button class="nav" data-v="res">Reservations</button>
+<button class="nav" data-v="admin" id="navAdmin" hidden>Upload &amp; logs</button>
+<button class="nav" data-v="users" id="navUsers" hidden>Users</button>
+<div class="who"><span id="me"></span><a id="out">Sign out</a></div></aside>
+<main><div class="top"><h1 id="ttl"></h1><div class="clock"><span id="d"></span><small id="t"></small><small id="acc"></small></div></div><div id="view"></div></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="importer.js"></script>
+<script>
+const sb = supabase.createClient(CFG.url, CFG.key);
+const $ = s => document.querySelector(s);
+const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fmt = n => n==null||isNaN(n) ? '–' : Math.round(n).toLocaleString('en-PH');
+const php = n => n==null||isNaN(n) ? '–' : '₱'+fmt(n);
+const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
+const pad = n => String(n).padStart(2,'0');
+const dim = (y,m) => new Date(y,m,0).getDate();
+const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today()};
+let charts = [];
+
+/* clock */
+function tick(){
+  const n = new Date(), o = {timeZone:'Asia/Manila'};
+  const d = n.toLocaleDateString('en-PH',{weekday:'long',day:'2-digit',month:'short',year:'numeric',...o});
+  const t = n.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',second:'2-digit',...o})+' · Philippine time';
+  $('#d').textContent = d; $('#t').textContent = t; $('#lclock').textContent = d+' · '+t;
+}
+tick(); setInterval(tick, 1000);
+
+/* auth */
+$('#go').onclick = async () => {
+  $('#lerr').textContent = '';
+  const {error} = await sb.auth.signInWithPassword({email:$('#em').value.trim(), password:$('#pw').value});
+  if (error) $('#lerr').textContent = error.message;
+};
+$('#pw').onkeydown = e => { if (e.key==='Enter') $('#go').click(); };
+$('#out').onclick = () => sb.auth.signOut();
+let cur = null;
+sb.auth.onAuthStateChange((_e, s) => {
+  if (!s){ cur=null; $('#app').hidden=true; $('#login').hidden=false; return; }
+  if (cur===s.user.id) return;
+  cur = s.user.id; setTimeout(() => start(s.user), 0);
+});
+async function fetchAll(t, mod){
+  let out=[], from=0;
+  for(;;){
+    let q = sb.from(t).select('*'); if (mod) q = mod(q);
+    const {data,error} = await q.range(from, from+999);
+    if (error) throw error;
+    out.push(...data); if (data.length<1000) return out; from += 1000;
+  }
+}
+async function start(user){
+  S.user = user;
+  const {data:p,error:profileError} = await sb.from('profiles').select('role').eq('id',user.id).maybeSingle();
+  if (profileError) { $('#lerr').textContent = profileError.message; return; }
+  S.role = p?.role || 'viewer';
+  $('#me').textContent = user.email+' ('+S.role+')'; $('#navAdmin').hidden = $('#navUsers').hidden = S.role!=='admin';
+  $('#acc').textContent = S.role!=='admin' && (p?.view_from||p?.view_to) ? 'Your access: '+(p.view_from||'start')+' to '+(p.view_to||'latest') : '';
+  $('#login').hidden = true; $('#app').hidden = false;
+  $('#view').innerHTML = '<p class="mu">Loading…</p>';
+  await load(); show(S.view);
+}
+async function load(){
+  try{
+    const [rawProps, rawAdr, rawRes, rawPace] = await Promise.all([
+      fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots')
+    ]);
+    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'VIV'};
+    S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
+    S.pm = Object.fromEntries(S.props.map(p=>[p.code,p]));
+    const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
+    S.adr = rawAdr.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],year:+d.slice(0,4),month:+d.slice(5,7),rooms_sold:+r.rooms_sold||0,room_revenue:+r.room_revenue||0,rooms_available:+r.rooms_available||0};}).filter(r=>r.property&&r.year&&r.month);
+    S.res = rawRes.map(r=>({ ...r, property:codeById[String(r.property_id)], room_nights:+r.nights||0, grand_total:+r.revenue||0, suggested_deposit:0, source_category:(/booking|agoda|expedia|ota/i.test(r.source||'')?'OTA':'Direct'), check_in:r.check_in, check_out:r.check_out, booking_date:r.booking_date, room_type:'', status:r.status||'', source:r.source||'' })).filter(r=>r.property);
+    S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.month_no&&r.day);
+  }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; }
+}
+
+/* shared helpers */
+const V = {dash, compare, pace, res, admin, users};
+function show(v){
+  S.view = v; charts.forEach(c=>c.destroy()); charts = [];
+  document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
+  V[v]();
+}
+document.querySelectorAll('.nav').forEach(b => b.onclick = () => show(b.dataset.v));
+const empty = m => { $('#view').innerHTML = `<p class="mu">${m}</p>`; };
+const opts = (a,v) => a.map(([k,t])=>`<option value="${k}"${String(k)===String(v)?' selected':''}>${t}</option>`).join('');
+const sel = (id,l,a,v) => `<div><label for="${id}">${l}</label><select id="${id}">${opts(a,v)}</select></div>`;
+const propOpts = () => [['ALL','All properties'],...S.props.map(p=>[p.code,p.name])];
+const years = () => [...new Set(S.adr.map(r=>r.year))].sort((a,b)=>b-a);
+const codes = c => c==='ALL' ? S.props.map(p=>p.code) : [c];
+const bind = (ks,fn) => ks.forEach(k => $('#'+k).onchange = e => { S.f[k]=e.target.value; fn(); });
+const tbl = (h,rows,cls) => `<table${cls?` class="${cls}"`:''}><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+function filt(){ const f=S.f; f.year??=years()[0]; f.month??='ALL'; f.prop??='ALL'; return f; }
+const filterBar = noMonth => { const f=filt(); return `<div class="bar">${sel('year','Year',years().map(y=>[y,y]),f.year)}${noMonth?'':sel('month','Month',[['ALL','All months'],...MN.map((m,i)=>[i+1,m])],f.month)}${sel('prop','Property',propOpts(),f.prop)}</div>`; };
+function agg(y, months, cs){
+  let sold=0, rev=0, avail=0;
+  for (const r of S.adr){
+    if (r.year!=y || !months.includes(r.month) || !cs.includes(r.property)) continue;
+    sold += +r.rooms_sold||0; rev += +r.room_revenue||0; avail += +r.rooms_available || 0;
+  }
+  return {sold, rev, avail, occ:avail?sold/avail:NaN, adr:sold?rev/sold:NaN, revpar:avail?rev/avail:NaN};
+}
+const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.year==y && cs.includes(r.property) && (+r.rooms_sold||+r.room_revenue)).map(r=>r.month))];
+function kc(t,a,b,f,pts){
+  const d=a-b, g=b?d/b:NaN, c=isNaN(d)?'':d>=0?'up':'dn', ar=d>=0?'▲':'▼';
+  const dt = isNaN(d) ? '' : `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
+  return `<div class="c"><small>${t}</small><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
+}
+function mk(id, type, labels, sets, fm, horiz){
+  charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
+    options:{indexAxis:horiz?'y':'x', maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+fm(horiz?c.parsed.x:c.parsed.y)}}}, scales:{[horiz?'x':'y']:{ticks:{callback:v=>fm(v)}}}}}));
+}
+const ds = (label,data,c) => ({label, data, backgroundColor:c, borderColor:c});
+const C1='#0E7C86', C2='#F2B134', C3='#10242B', mfmt = v => v>=1e6 ? (v/1e6).toFixed(1)+'M' : fmt(v);
+
+/* Dashboard */
+function dash(){
+  $('#ttl').textContent = 'Dashboard';
+  if (!S.adr.length) return empty('No data yet. An admin needs to upload the ADR reports.');
+  const f=filt(), y=+f.year, cs=codes(f.prop), ms=monthsFor(y,f.month,cs), all=codes('ALL');
+  const ty=agg(y,ms,cs), ly=agg(y-1,ms,cs), msA=monthsFor(y,f.month,all);
+  const T = {occ:'Occupancy by property',rev:'Room revenue by property',adr:'ADR by property',rvp:'RevPAR by property'};
+  $('#view').innerHTML = filterBar()+`<div class="cards">${kc('Room revenue',ty.rev,ly.rev,php)}${kc('Occupancy',ty.occ,ly.occ,pct,1)}${kc('ADR',ty.adr,ly.adr,php)}${kc('RevPAR',ty.revpar,ly.revpar,php)}${kc('Rooms sold',ty.sold,ly.sold,fmt)}</div>
+  <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
+  <div class="two">${Object.keys(T).map(k=>`<div class="p"><h3>${T[k]}</h3><div class="ch"><canvas id="c_${k}"></canvas></div></div>`).join('')}</div>
+  <p class="note">Occupancy = rooms sold ÷ (rooms × days). Last year compares the same months that have data this year.</p>`;
+  bind(['year','month','prop'], dash);
+  const mm = Array.from({length:12},(_,i)=>i+1);
+  mk('#c0','bar',MN,[ds(y,mm.map(m=>agg(y,[m],cs).rev||null),C1),ds(y-1,mm.map(m=>agg(y-1,[m],cs).rev||null),C2)],mfmt);
+  const ps = S.props.filter(p=>p.total_rooms>0), a = ps.map(p=>agg(y,msA,[p.code])), b = ps.map(p=>agg(y-1,msA,[p.code]));
+  const spec = {occ:['occ',v=>(+v*100).toFixed(1)+'%'],rev:['rev',mfmt],adr:['adr',php],rvp:['revpar',php]};
+  for (const k in spec){ const [m,fm]=spec[k]; mk('#c_'+k,'bar',ps.map(p=>p.name),[ds(y,a.map(x=>x[m]),C1),ds(y-1,b.map(x=>x[m]),C2)],fm,true); }
+}
+
+/* Compare */
+function compare(){
+  $('#ttl').textContent = 'Compare';
+  if (!S.adr.length) return empty('No data yet. An admin needs to upload the ADR reports.');
+  const f=filt(), y=+f.year, cs=codes(f.prop), ms=monthsFor(y,'ALL',cs), A=[y-1,y,y+1].map(v=>agg(v,ms,cs));
+  const row = (l,k,fm,pts) => {
+    const d=A[1][k]-A[0][k], g=A[0][k]?d/A[0][k]:NaN, c=d>=0?'up':'dn', cell=a=>a.sold>0?fm(a[k]):'–';
+    return `<tr><td>${l}</td><td>${cell(A[0])}</td><td>${cell(A[1])}</td><td>${cell(A[2])}</td><td class="${c}">${isNaN(d)?'–':(d>=0?'▲ ':'▼ ')+(pts?(Math.abs(d)*100).toFixed(1)+' pts':fm(Math.abs(d)))}</td><td class="${c}">${isNaN(g)?'–':(Math.abs(g)*100).toFixed(1)+'%'}</td></tr>`;
+  };
+  const mm = Array.from({length:12},(_,i)=>i+1), ser = [y-1,y,y+1].map(v=>mm.map(m=>agg(v,[m],cs).rev||null));
+  $('#view').innerHTML = filterBar(true)+`<div class="p"><h3>Last year, this year and next year</h3><table><tr><th>Metric</th><th>${y-1}</th><th>${y}</th><th>${y+1} on the books</th><th>${y} vs ${y-1}</th><th>Growth</th></tr>
+  ${row('Room revenue','rev',php)}${row('Occupancy','occ',pct,1)}${row('ADR','adr',php)}${row('RevPAR','revpar',php)}${row('Rooms sold','sold',fmt)}</table>
+  <p class="note">Next year shows bookings already in the ADR report for ${y+1}. Months compared: those with ${y} data.</p></div>
+  <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
+  <div class="p"><h3>Monthly amounts, ₱ millions</h3>${tbl(['Year',...MN],[y-1,y,y+1].map((v,i)=>[v,...ser[i].map(x=>x?(x/1e6).toFixed(1):'–')]))}</div>`;
+  bind(['year','prop'], compare);
+  mk('#c0','line',MN,[y-1,y,y+1].map((v,i)=>({...ds(v,ser[i],[C2,C1,C3][i]),tension:.25,borderDash:i===2?[6,5]:[]})),mfmt);
+}
+
+/* Pace: room nights on the books for a month, one column per upload day */
+function pace(){
+  $('#ttl').textContent = 'Pace';
+  if (!S.pace.length) return empty('No pace data yet. An admin needs to upload the Pace Report.');
+  const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
+  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.month_no] = r);
+  const mo = m+S.po, nd = dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
+  const cs = S.props.filter(p=>S.pace.some(r=>r.property===p.code));
+  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
+  const cap = c => { for (let d=ld; d>=1; d--){ const r=M[c+'|'+iso(d)+'|'+mo]; if (r) return +r.ty_capacity; } return 0; };
+  const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
+  const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
+  const TA = cs.reduce((s,p)=>s+cap(p.code),0);
+  const cell = (i,v,a) => i+1>ld ? '<td></td>' : v==null ? '<td class="no"><small>no upload</small></td>' : `<td${i+1===ld?' class="now"':''}><b>${fmt(v)}</b><small>${pct(a?v/a:NaN)}</small></td>`;
+  const add = (arr,i) => {
+    if (i+1>ld) return '<td></td>'; const v=arr[i]; if (v==null) return '<td class="no"></td>';
+    let p=null; for (let j=i-1;j>=0;j--) if (arr[j]!=null){ p=arr[j]; break; }
+    if (p==null) return '<td><span class="mu">–</span></td>';
+    const d=v-p, c=d>0?'up':d<0?'dn':'mu', sg=d>0?'+':d<0?'−':'';
+    return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
+  };
+  const days = Array.from({length:nd},(_,i)=>i);
+  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[m-1]} ${i+1}<br>${WD[new Date(y,m-1,i+1).getDay()]}</th>`).join('')}</tr>`;
+  let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
+  body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
+  body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
+  body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
+  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
+  const tabs = [0,1,2,3,4].filter(o=>m+o<=12).map(o=>`<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${o?(o+1)*30+' days':'This month'} · ${MN[m+o-1]}</button>`).join('');
+  $('#view').innerHTML = `<div class="bar">${tabs}</div><div class="cards">
+   <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
+   <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
+   <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
+   <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
+  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${y}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
+  <p class="note">Each column is one day's upload. Bold = room nights on the books for the month; grey = occupancy. Green = added since the last upload, red = lost (for example cancellations). Yellow = no file that day.</p></div>`;
+}
+
+/* Reservations */
+const rtext = r => !r ? 'All' : r.s===r.e ? fd(r.s) : fd(r.s)+' – '+fd(r.e);
+const fd = i => MN[+i.slice(5,7)-1]+' '+i.slice(8);
+function popHTML(){
+  const p=S.pk, first=new Date(p.vy,p.vm,1).getDay(), n=dim(p.vy,p.vm+1), lo=p.ds, hi=p.de||p.ds;
+  let cells = '<span></span>'.repeat(first);
+  for (let d=1; d<=n; d++){
+    const i=`${p.vy}-${pad(p.vm+1)}-${pad(d)}`; let c='dy';
+    if (lo){ if (i===lo||i===hi) c+=' ed'+(i===lo?' st':'')+(i===hi?' en':''); else if (i>lo&&i<hi) c+=' in'; }
+    cells += `<button class="${c}" data-a="pick:${i}">${d}</button>`;
+  }
+  const yrs = Array.from({length:7},(_,i)=>new Date().getFullYear()-3+i).map(v=>[v,v]);
+  let txt = 'Pick a start day';
+  if (lo){ const dd=Math.round((new Date(hi)-new Date(lo))/864e5)+1; txt = rtext({s:lo,e:hi})+' · '+dd+(dd===1?' day':' days'); }
+  return `<div class="pop" role="dialog" aria-label="Choose dates"><div class="ph"><button class="nb" aria-label="Previous month" data-a="prev">‹</button>
+   <div class="ps"><select data-s="vm" aria-label="Month">${opts(MN.map((x,i)=>[i,x]),p.vm)}</select><select data-s="vy" aria-label="Year">${opts(yrs,p.vy)}</select></div>
+   <button class="nb" aria-label="Next month" data-a="next">›</button></div><div class="wk">${WD.map(d=>`<span>${d}</span>`).join('')}</div><div class="gd">${cells}</div>
+   <p class="sl">${txt}</p><div class="pa"><button class="cn" data-a="no">Cancel</button><button class="ap" data-a="ok"${lo?'':' disabled'}>Apply</button></div>
+   <p class="note" style="text-align:center">Pick a start day, then an end day. Pick the same day twice for one day.</p></div>`;
+}
+const chip = (k,l) => { const r=S.rg[k]; return `<div class="chipw"><div class="pill${r?' act':''}"><button class="cb" data-a="tg:${k}" aria-haspopup="dialog">${l}: <b>${rtext(r)}</b></button>${r?`<button class="cb" aria-label="Clear ${l}" data-a="cl:${k}">×</button>`:''}</div>${S.pk.open===k?popHTML():''}</div>`; };
+const spill = (id,l,a,v) => `<div class="pill">${l}<select id="${id}" aria-label="${l}">${opts(a,v)}</select></div>`;
+function res(){
+  $('#ttl').textContent = 'Reservations';
+  const f=S.f; f.rp??='ALL'; f.st??='ALL'; f.sr??='ALL';
+  const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
+  const rs = S.res.filter(r => (f.rp==='ALL'||r.property===f.rp) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin) && inR(r.check_out,g.cout) && (f.st==='ALL'||r.status===f.st) && (f.sr==='ALL'||r.source_category===f.sr));
+  const Cn = r => r.status==='Cancelled', sum = (a,k) => a.reduce((s,r)=>s+(+r[k]||0),0);
+  const st = a => { const c=a.filter(Cn); return {n:a.length,c:c.length,nt:sum(a,'room_nights'),cn:sum(c,'room_nights'),rev:sum(a.filter(r=>!Cn(r)),'grand_total'),lost:sum(c,'suggested_deposit')}; };
+  const line = (l,s) => [l,fmt(s.n),fmt(s.c),pct(s.n?s.c/s.n:NaN),fmt(s.nt),fmt(s.cn),php(s.rev),php(s.lost)];
+  const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m).sort((a,b)=>a[0]<b[0]?-1:1); };
+  const T = st(rs), H = ['','Bookings','Cancelled','Cancel rate','Room nights','Cancelled nights','Booked revenue','Value lost'];
+  const hd = l => H.map((x,i)=>i?x:l);
+  const parts = [g.book?'booked '+rtext(g.book):'all booking dates']; if (g.cin) parts.push('check-in '+rtext(g.cin)); if (g.cout) parts.push('check-out '+rtext(g.cout));
+  const stats = [...new Set(S.res.map(r=>r.status).filter(Boolean))], srcs = [...new Set(S.res.map(r=>r.source_category).filter(Boolean))];
+  const byP = S.props.map(p => [p.name, st(rs.filter(r=>r.property===p.code))]).filter(x=>x[1].n);
+  const ota = rs.filter(r=>r.source_category==='OTA').length;
+  $('#view').innerHTML = `<div class="bar">${spill('rp','Property',propOpts(),f.rp)}${chip('book','Booking date')}${chip('cin','Check-in date')}${chip('cout','Check-out date')}${spill('st','Status',[['ALL','All'],...stats.map(x=>[x,x])],f.st)}${spill('sr','Source',[['ALL','All'],...srcs.map(x=>[x,x])],f.sr)}<button class="rst" data-a="rs">Reset filters</button></div>
+  <p class="note" style="margin:-6px 0 16px">Showing ${fmt(rs.length)} reservations: ${parts.join(' · ')}. Every number on this page follows these filters.</p>
+  <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
+  <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
+  <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div><div class="c"><small>Value lost</small><b class="dn">${php(T.lost)}</b><i>from cancelled bookings</i></div></div>
+  <div class="p"><h3>Reservations and cancellations by month (check-in month)</h3>${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div>
+  <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
+  <div class="p"><h3>By booking date</h3>${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}
+  <p class="note">OTA ${fmt(ota)} (${pct(rs.length?ota/rs.length:NaN)}) · Direct ${fmt(rs.filter(r=>r.source_category==='Direct').length)}</p></div></div>
+  <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
+  bind(['rp','st','sr'], res);
+}
+
+/* Admin */
+const addDay = d => new Date(Date.parse(d+'T00:00:00Z')+864e5).toISOString().slice(0,10);
+async function admin(){
+  $('#ttl').textContent = 'Upload & logs';
+  if (S.role!=='admin') return empty('Admins only.');
+  const propOptions = S.props.map(p=>[p.id,p.name]);
+  $('#view').innerHTML = `<div class="admin-grid"><section class="upload-card"><h3>Upload reports</h3>
+    <div class="admin-select"><label for="upP">Property</label><select id="upP">${opts(propOptions,S.props[0]?.id)}</select></div>
+    <label class="upload-field"><span>ADR report 1: 2025 and 2026</span><input id="fA" type="file" accept=".xlsx,.csv"></label>
+    <label class="upload-field"><span>ADR report 2: 2027</span><input id="fA2" type="file" accept=".xlsx,.csv"></label>
+    <label class="upload-field"><span>Reservations by Booking Date</span><input id="fR" type="file" accept=".csv,.xlsx"></label>
+    <label class="upload-field"><span>Pace Report</span><input id="fP" type="file" accept=".csv,.xlsx"></label>
+    <div class="admin-select"><label for="snap">Pace snapshot date</label><input id="snap" type="date" value="${today()}"></div>
+    <button class="btn" id="up">Upload</button></section>
+    <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
+    <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
+    <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
+  $('#up').onclick = doUpload; $('#ld').onchange=e=>{S.logDate=e.target.value||today();loadLog();}; await loadLog(); await loadAdminUsers();
+}
+async function loadLog(){
+  const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
+  if(error){$('#logbox').innerHTML=`<p class="err">${error.message}</p>`;return;}
+  const goodRows=data.filter(r=>String(r.result||'').toLowerCase()==='ok'||String(r.result||'').toLowerCase()==='saved');
+  const ok=new Set(goodRows.map(r=>r.property_id));
+  const wait=S.props.filter(p=>!ok.has(p.id)).map(p=>p.name);
+  $('#summary').innerHTML=`<div class="c"><small>Properties updated</small><b>${ok.size} of ${S.props.length}</b><i>${wait.length} waiting</i></div><div class="c"><small>Files received</small><b>${data.length}</b><i>${data.filter(r=>!goodRows.includes(r)).length} with errors</i></div>`;
+  $('#waiting').textContent=wait.length?'Waiting: '+wait.join(' · '):'All properties updated.';
+  $('#logbox').innerHTML=data.length?tbl(['Time','Property','Report','Rows','Result'],data.map(r=>[new Date(r.created_at).toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`])):'<p class="mu">No uploads on this day.</p>';
+}
+async function loadAdminUsers(){
+  const box=$('#userbox'); if(!box)return;
+  const {data,error}=await sb.from('profiles').select('id,email,role');
+  if(error){box.innerHTML=`<p class="err">${error.message}</p>`;return;}
+  box.innerHTML=data.length?tbl(['Email','Role',''],data.map(u=>[u.email||'—',u.role||'viewer',u.id===S.user.id?'Current user':'Managed in Supabase'])):'<p class="mu">No profiles found.</p>';
+}
+
+const readRows = async f => { const wb = XLSX.read(await f.arrayBuffer(),{type:'array'}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null,raw:true}); };
+const chunked = async (fn,rows) => { for (let i=0;i<rows.length;i+=500){ const {error}=await fn(rows.slice(i,i+500)); if (error) throw error; } };
+const logUp = o => sb.from('upload_log').insert({user_email:S.user.email,...o});
+async function doUpload(){
+  const propertyId=+$('#upP').value, prop=S.props.find(p=>p.id===propertyId), L=m=>$('#log').textContent+=m+'\n';
+  if(!prop)return L('Choose a property.');
+  const jobs=[['ADR','fA'],['ADR','fA2'],['Reservations','fR'],['Pace','fP']].filter(([,id])=>$('#'+id).files[0]);
+  $('#log').textContent=''; if(!jobs.length)return L('Choose at least one file.'); $('#up').disabled=true;
+  for(const [rep,id] of jobs){
+    try{
+      const rows=await readRows($('#'+id).files[0]); let n=0,note='',snap=null;
+      if(rep==='ADR'){
+        const r=Imp.parseAdr(rows,prop.code);
+        // The Cloudbeds ADR export is monthly. Store one monthly aggregate on day 01,
+        // with full-month available room nights, so the existing daily table can power monthly KPIs.
+        const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
+        if(!mapped.length)throw new Error('No ADR rows found.');
+        await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);n=mapped.length;note=r.note+' (monthly totals)';
+      }
+      if(rep==='Reservations'){
+        const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
+        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({property_id:propertyId,reservation_no:String(x.reservation_no),booking_date:x.booking_date,check_in:x.check_in,check_out:x.check_out,nights:x.room_nights||0,revenue:x.grand_total||0,status:x.status||'',source:x.source||''}));
+        if(!mapped.length)throw new Error('No rows with reservation numbers were found; no existing data was changed.');
+        await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);n=mapped.length;note=r.note+' (upserted; existing rows not deleted)';
+      }
+      if(rep==='Pace'){
+        const r=Imp.parsePace(rows,prop.code,$('#snap').value||null);snap=r.snap;
+        const mapped=r.rows.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:`${(+snap.slice(5,7)>x.month_no?+snap.slice(0,4)+1:+snap.slice(0,4))}-${pad(x.month_no)}-${pad(x.day)}`,room_nights:x.ty_rooms_sold||0}));
+        if(!mapped.length)throw new Error('No Pace rows found.');
+        await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);n=mapped.length;note=`snapshot ${snap}`;
+      }
+      L(`${rep}: ${n} rows saved (${note}).`);
+      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});if(logError)L(`Log warning: ${logError.message}`);
+    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${rep}: ${m}`);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError)L(`Log warning: ${logError.message}`);}
+  }
+  await load();L('Done.');$('#up').disabled=false;await loadLog();
+}
+/* Users (admin): this schema stores role only; active/date controls are not available. */
+async function users(){
+  $('#ttl').textContent='Users';
+  if(S.role!=='admin')return empty('Admins only.');
+  const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
+  if(error)return empty(error.message);
+  $('#view').innerHTML=`<div class="p"><h3>Users and access</h3>${tbl(['Email','Role','Status'],data.map(u=>[u.email||'—',u.role||'viewer',u.id===S.user.id?'Current user':'Managed in Supabase']))}<p class="note">This database schema currently stores user role only. Active status and date restrictions are not configured in the profiles table.</p></div>`;
+}
+/* clicks: filters, date picker, pace tabs */
+const A = {
+  tg: k => { const p=S.pk; if (p.open===k){ p.open=null; return; } const r=S.rg[k], b=r?r.s:today(); Object.assign(p,{open:k,ds:r?r.s:null,de:r?r.e:null,vy:+b.slice(0,4),vm:+b.slice(5,7)-1}); },
+  cl: k => { S.rg[k]=null; S.pk.open=null; },
+  pick: i => { const p=S.pk; if (!p.ds||p.de){ p.ds=i; p.de=null; } else if (i<p.ds){ p.de=p.ds; p.ds=i; } else p.de=i; },
+  prev: () => { const p=S.pk; if (--p.vm<0){ p.vm=11; p.vy--; } },
+  next: () => { const p=S.pk; if (++p.vm>11){ p.vm=0; p.vy++; } },
+  no: () => { S.pk.open=null; },
+  ok: () => { const p=S.pk; if (!p.ds) return; S.rg[p.open]={s:p.ds,e:p.de||p.ds}; p.open=null; },
+  rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.rp=S.f.st=S.f.sr='ALL'; },
+  po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; },
+  us: async id => {
+    const g = k => document.getElementById(k+'_'+id), u = {view_from:g('f').value||null, view_to:g('t').value||null};
+    if (!g('r').disabled){ u.role=g('r').value; u.active=g('a').checked; }
+    const {error} = await sb.from('profiles').update(u).eq('id',id); S.umsg = error ? error.message : 'Saved.';
+  }
+};
+document.addEventListener('click', async e => { const b=e.target.closest('[data-a]'); if (!b) return; const [a,...v]=b.dataset.a.split(':'); await A[a](v.join(':')); show(S.view); });
+document.addEventListener('change', e => { const k=e.target.dataset.s; if (k){ S.pk[k]=+e.target.value; show(S.view); } });
+</script>
+</body>
+</html>
