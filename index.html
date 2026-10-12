@@ -326,8 +326,8 @@ async function admin(){
   $('#view').innerHTML = `<div class="two"><div class="p"><h3>Upload reports</h3><label for="upP">Property</label><select id="upP">${opts(S.props.map(p=>[p.code,p.name]),S.props[0]?.code)}</select>
   <label for="fA">ADR report 1: 2025 and 2026 (average_daily_rate.xlsx)</label><input id="fA" type="file" accept=".xlsx">
   <label for="fA2">ADR report 2: 2027 (average_daily_rate.xlsx)</label><input id="fA2" type="file" accept=".xlsx">
-  <label for="fR">Reservations by Booking Date</label><input id="fR" type="file" accept=".xlsx">
-  <label for="fP">Pace Report</label><input id="fP" type="file" accept=".xlsx">
+  <label for="fR">Reservations by Booking Date</label><input id="fR" type="file" accept=".csv,.xlsx">
+  <label for="fP">Pace Report</label><input id="fP" type="file" accept=".csv,.xlsx">
   <label for="snap">Pace snapshot date (leave blank to use the date in the file)</label><input id="snap" type="date">
   <button class="btn" id="up">Upload</button></div><div class="p"><h3>Result</h3><pre id="log">Ready.</pre></div></div><div id="logbox"></div>`;
   $('#up').onclick = doUpload; await loadLog();
