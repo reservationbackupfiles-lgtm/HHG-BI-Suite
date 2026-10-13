@@ -884,6 +884,35 @@ document.addEventListener('change', e => {
   }
   const k=e.target.dataset.s; if (k){ S.pk[k]=+e.target.value; show(S.view); }
 });
+
+  /* Auto logout after 30 minutes of inactivity */
+(() => {
+  const TIMEOUT = 30 * 60 * 1000;
+  let idleTimer;
+
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+
+    if ($('#app').hidden || !S.user) return;
+
+    idleTimer = setTimeout(async () => {
+      toast('You have been logged out due to 30 minutes of inactivity.', 'error', 5000);
+      await sb.auth.signOut();
+    }, TIMEOUT);
+  }
+
+  ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
+    document.addEventListener(event, resetIdleTimer, { passive: true });
+  });
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      resetIdleTimer();
+    } else {
+      clearTimeout(idleTimer);
+    }
+  });
+})();
 </script>
 </body>
 </html>
