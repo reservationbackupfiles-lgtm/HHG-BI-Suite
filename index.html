@@ -440,13 +440,48 @@ if (refreshBtn) {
   
 /* Shared property filter used across report pages */
 function sharedPropertyFilter(){
-  const selected=S.draftProps??(S.selectedProps===null?S.props.map(p=>p.code):[...S.selectedProps]);
-  const all=S.props.length>0&&selected.length===S.props.length;
-  const label=all?'All properties':selected.length+' properties selected';
-  return `<div class="prop-filter"><label class="prop-filter-label">Hotel</label><button type="button" class="prop-filter-toggle" data-a="toggleProps"><b>${label}</b><span aria-hidden="true">⌄</span></button>${S.propMenuOpen?`<div class="prop-filter-menu"><div class="prop-filter-actions"><button type="button" data-a="selectAllProps">All Hotels</button><button type="button" data-a="clearProps">Clear</button><button type="button" class="prop-filter-run" data-a="runProps">Run</button></div>${S.props.map(p=>`<label class="prop-filter-item"><input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code)?'checked':''}>${p.name}</label>`).join('')}</div>`:''}</div>`;
+  const selected = S.draftProps ??
+    (S.selectedProps === null
+      ? S.props.map(p => p.code)
+      : [...S.selectedProps]);
+
+  const all = S.props.length > 0 &&
+    selected.length === S.props.length;
+
+  const label = all
+    ? 'All properties'
+    : selected.length
+      ? `${selected.length} properties selected`
+      : 'No properties selected';
+
+  return `
+    <div class="prop-filter">
+      <button
+        type="button"
+        class="prop-filter-toggle"
+        data-a="toggleProps"
+        aria-expanded="${S.propMenuOpen}"
+      >
+        <span class="prop-label">${label}</span>
+        <span class="prop-arrow" aria-hidden="true"></span>
+      </button>
+      ${S.propMenuOpen ? `
+        <div class="prop-filter-menu">
+          <div class="prop-filter-actions">
+            <button type="button" data-a="selectAllProps">All Hotels</button>
+            <button type="button" data-a="clearProps">Clear</button>
+            <button type="button" class="prop-filter-run" data-a="runProps">Run</button>
+          </div>
+          ${S.props.map(p => `
+            <label class="prop-filter-item">
+              <input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code) ? 'checked' : ''}>
+              <span class="prop-name">${p.name}</span>
+            </label>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>`;
 }
-const selectedCodes=()=>S.selectedProps===null?S.props.map(p=>p.code):S.selectedProps;
-const filterSelected=cs=>cs.filter(c=>selectedCodes().includes(c));
 
 /* shared helpers */
 const V = {dash, compare, pace, res, cancel, admin, users};
