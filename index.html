@@ -559,6 +559,55 @@ function res(){
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Guest name','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.guest_name||'–',r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
   bind(['rp','st','sr'], res);
 }
+  /* Cancellations: revenue lost, cancellation window and sources */
+const srcN = x => { const s = String(x ?? '–').trim().replace(/\s*\/\s*/g, ' / '); return /^website( \/ booking engine)?$/i.test(s) ? 'Website / Booking Engine' : s; };
+const WIN = [['0–7 days',0,7],['8–14 days',8,14],['15–30 days',15,30],['31–60 days',31,60],['61–90 days',61,90],['91+ days',91,1e9]];
+function cancel(){
+  $('#ttl').textContent = 'Cancellations';
+  if (!S.res.length) return empty('No reservations yet. An admin needs to upload the Reservations report.');
+  const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
+  const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
+  const all = S.res.map(r => ({...r, src:srcN(r.source)}));
+  const rs = all.filter(r => (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
+  const lead = r => r.check_in && r.booking_date ? Math.max(0, Math.round((new Date(r.check_in)-new Date(r.booking_date))/864e5)) : null;
+  const Cn = r => r.status==='Cancelled', lost = r => +r.suggested_deposit||0;
+  const sum = (a,fn) => a.reduce((s,r)=>s+fn(r),0), avg = a => a.length ? sum(a,x=>x)/a.length : NaN;
+  const wname = r => { const l=lead(r); return l==null ? null : WIN.find(w=>l>=w[1]&&l<=w[2])[0]; };
+  const cx = rs.filter(Cn), N = cx.length, L = sum(cx,lost), nights = sum(rs,r=>+r.room_nights||0);
+  const avgW = a => avg(a.map(lead).filter(x=>x!=null));
+  const cards = `<div class="cards">
+    <div class="c"><small>Cancelled bookings</small><b>${fmt(N)}</b><i>${pct(rs.length?N/rs.length:NaN)} of ${fmt(rs.length)} bookings</i></div>
+    <div class="c"><small>Revenue lost</small><b class="dn">${php(L)}</b><i>from cancelled bookings</i></div>
+    <div class="c"><small>Average lost per cancellation</small><b>${php(N?L/N:NaN)}</b><i>revenue lost ÷ cancelled</i></div>
+    <div class="c"><small>Cancelled room nights</small><b>${fmt(sum(cx,r=>+r.room_nights||0))}</b><i>${pct(nights?sum(cx,r=>+r.room_nights||0)/nights:NaN)} of room nights</i></div>
+    <div class="c"><small>Average window</small><b>${isNaN(avgW(cx))?'–':Math.round(avgW(cx))+' days'}</b><i>booking to check-in, cancelled</i></div>
+    <div class="c"><small>Largest single loss</small><b>${php(N?Math.max(...cx.map(lost)):NaN)}</b><i>one cancelled booking</i></div></div>`;
+  const maxC = Math.max(1, ...WIN.map(w=>cx.filter(r=>wname(r)===w[0]).length));
+  const winRows = WIN.map(w => { const a=cx.filter(r=>wname(r)===w[0]), v=sum(a,lost);
+    return [w[0],fmt(a.length),`${pct(N?a.length/N:NaN)}<span class="bx" style="width:${a.length/maxC*160}px"></span>`,php(v),a.length?php(v/a.length):'–']; });
+  winRows.push(['<b>Total</b>',fmt(N),'100%',php(L),N?php(L/N):'–']);
+  const row = (name,a) => { const c=a.filter(Cn), v=sum(c,lost);
+    return [name,fmt(a.length),fmt(c.length),`${pct(a.length?c.length/a.length:NaN)}<span class="bx" style="width:${a.length?c.length/a.length*160:0}px"></span>`,php(v),c.length?php(v/c.length):'–',c.length?Math.round(avgW(c))+' days':'–']; };
+  const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m); };
+  const cats = grp(r=>r.source_category||'–').map(([n,a])=>row(`<b>${n}</b>`,a));
+  const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost)).map(([n,a])=>row(n,a));
+  const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
+  const cell = n => n ? `<div style="margin:-8px -10px;padding:8px 10px;background:rgba(14,124,134,${(0.12+0.45*n/maxM).toFixed(2)})"><b>${n}</b></div>` : '<span class="mu">–</span>';
+  const mcount = (s,w) => cx.filter(r=>r.src===s && wname(r)===w).length;
+  const maxM = Math.max(1, ...srcList.flatMap(s=>WIN.map(w=>mcount(s,w[0]))));
+  const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>r.src===s).length}</b>`]);
+  const top = [...cx].sort((a,b)=>lost(b)-lost(a)).slice(0,10).map(r=>[S.pm[r.property]?.name||r.property,r.src,r.room_type&&r.room_type!=='-'?r.room_type:'–',r.booking_date?fd(r.booking_date):'–',r.check_in?fd(r.check_in):'–',lead(r)==null?'–':lead(r)+' days',fmt(r.room_nights),`<span class="dn">${php(lost(r))}</span>`]);
+  const srcOpts = [['ALL','All'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
+  const H = ['','Bookings','Cancelled','Cancel rate','Revenue lost','Average lost','Average window'];
+  $('#view').innerHTML = `<div class="bar">${spill('cp','Property',propOpts(),f.cp)}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
+  <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Revenue lost = the booking value before cancellation (Suggested Deposit, since cancelled bookings show a Grand Total of 0). The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
+  ${cards}
+  <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Revenue lost','Average lost'],winRows)}</div>
+  <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
+  <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
+  <div class="p"><h3>Largest losses, per cancelled reservation</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Revenue lost'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
+  bind(['cp','cs'], cancel);
+}
 
 function showUploadConfirm(message){
   return new Promise(resolve=>{
