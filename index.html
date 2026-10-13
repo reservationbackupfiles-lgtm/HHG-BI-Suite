@@ -395,7 +395,7 @@ async function load(){
 }
 
 /* shared helpers */
-const V = {dash, compare, pace, res, admin, users};
+const V = {dash, compare, pace, res, cancel, admin, users};
 function show(v){
   S.view = v; charts.forEach(c=>c.destroy()); charts = [];
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
