@@ -137,13 +137,18 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 
 <main>
   <div class="top">
-    <h1 id="ttl"></h1>
+  <h1 id="ttl"></h1>
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <button id="refreshData" class="btn" style="margin-top:0">
+      ↻ Refresh Data
+    </button>
     <div class="clock">
       <span id="d"></span>
       <small id="t"></small>
       <small id="acc"></small>
     </div>
   </div>
+</div>
   <div id="view"></div>
 </main>
 </div>
