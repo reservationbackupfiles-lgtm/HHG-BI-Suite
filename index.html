@@ -596,6 +596,12 @@ function sharedPropertyFilter(){
     </div>`;
 }
 
+/* Shared property selection helpers */
+const selectedCodes = () => S.selectedProps === null
+  ? S.props.map(p => p.code)
+  : S.selectedProps;
+const filterSelected = cs => cs.filter(c => selectedCodes().includes(c));
+
 /* shared helpers */
 const V = {dash, compare, pace, res, cancel, admin, users};
 function show(v){
