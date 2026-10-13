@@ -567,7 +567,18 @@ function cancel(){
   if (!S.res.length) return empty('No reservations yet. An admin needs to upload the Reservations report.');
   const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
-  const all = S.res.map(r => ({...r, src:srcN(r.source)}));
+  const normalizeSource = x => {
+  const s = srcN(x);
+  const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const aliases = {
+    elnidogo: 'El Nido Go',
+    affiliated: 'Affiliated',
+    potentialinvestor: 'Potential & Investors',
+    potentialinvestors: 'Potential & Investors'
+  };
+  return aliases[k] || s;
+};
+const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const rs = all.filter(r => (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
   const lead = r => r.check_in && r.booking_date ? Math.max(0, Math.round((new Date(r.check_in)-new Date(r.booking_date))/864e5)) : null;
   const Cn = r => r.status==='Cancelled', lost = r => +r.suggested_deposit||0;
