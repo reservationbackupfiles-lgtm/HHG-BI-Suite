@@ -236,6 +236,77 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
     max-width: none;
   }
 }
+
+/* Claude-inspired compact report filter styling */
+.bar {
+  align-items: center;
+  gap: 9px;
+}
+.bar > div {
+  min-width: 0;
+}
+.prop-filter {
+  width: 200px;
+  min-width: 200px;
+  flex: 0 0 200px;
+}
+.prop-filter-toggle {
+  height: 38px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border-color: #D2DEE3;
+  background: #fff;
+  font-size: 13px;
+}
+.prop-filter-toggle:hover {
+  border-color: var(--sea);
+  background: #fff;
+}
+.prop-filter-toggle .prop-label {
+  font-weight: 700;
+}
+.prop-filter-menu {
+  top: calc(100% + 7px);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 12px 32px rgba(16,36,43,.18);
+}
+.prop-filter-actions button {
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.prop-filter-run {
+  border-radius: 999px !important;
+}
+.prop-filter-item {
+  border-radius: 6px;
+  font-size: 13px;
+}
+.prop-filter-item:hover {
+  background: #F2F8F9;
+}
+.p, .c {
+  border-radius: 9px;
+}
+.tab {
+  border-radius: 999px;
+}
+.pill {
+  min-height: 38px;
+  border-color: #D2DEE3;
+}
+.rst {
+  min-height: 38px;
+}
+@media(max-width:760px) {
+  .prop-filter {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
 </style>
 </head>
 <body>
