@@ -399,6 +399,23 @@ async function load(){
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; }
 }
 
+document.querySelector('#refreshData').onclick = async () => {
+  const btn = document.querySelector('#refreshData');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing...';
+
+  try {
+    await load();
+    show(S.view);
+    toast('Data refreshed successfully.');
+  } catch (e) {
+    toast('Refresh failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh Data';
+  }
+};
+  
 /* shared helpers */
 const V = {dash, compare, pace, res, cancel, admin, users};
 function show(v){
