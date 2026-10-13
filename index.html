@@ -109,16 +109,18 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 
 /* Shared multi-property filter */
 .prop-filter{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;min-width:198px}
-.prop-filter-label{display:block;font-weight:700;font-size:13px;margin:0 0 0 0;color:var(--ink)}
-.prop-filter-toggle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;width:100%;min-width:198px;height:42px;text-align:left;cursor:pointer;color:var(--ink)}
-.prop-filter-menu{position:absolute;left:0;top:66px;z-index:1000;width:300px;max-height:390px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(16,36,43,.2);padding:10px}
-.prop-filter-actions{display:flex;gap:8px;position:sticky;top:-10px;background:#fff;padding:4px 0 9px;border-bottom:1px solid var(--line);margin-bottom:6px}
-.prop-filter-actions button,.prop-filter-run{border:0;border-radius:6px;padding:7px 10px;cursor:pointer;font-weight:700}
-.prop-filter-actions button{background:#f2f5f6;color:var(--ink)}
-.prop-filter-run{background:#df7900;color:#fff;flex:1}
-.prop-filter-item{display:flex;align-items:center;gap:9px;padding:8px 4px;font-weight:500;cursor:pointer}
-.prop-filter-item input{width:auto;margin:0;accent-color:#df7900}
-.prop-filter-item span{width:8px;height:8px;border-radius:50%;background:var(--sea);flex:none}
+.prop-filter-label{display:block;font-weight:700;font-size:13px;margin:0;color:var(--ink)}
+.prop-filter-toggle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;width:100%;min-width:198px;height:42px;text-align:left;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+.prop-filter-toggle:hover{border-color:#b8cbd1}
+.prop-filter-menu{position:absolute;left:0;top:calc(100% + 5px);z-index:1000;width:300px;max-height:390px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgba(16,36,43,.14);padding:8px}
+.prop-filter-actions{display:flex;gap:6px;position:sticky;top:-8px;background:#fff;padding:2px 0 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.prop-filter-actions button,.prop-filter-run{border:1px solid var(--line);border-radius:6px;padding:7px 9px;cursor:pointer;font-weight:700;font-size:12px}
+.prop-filter-actions button{background:#fff;color:var(--ink)}
+.prop-filter-actions button:hover{background:var(--bg)}
+.prop-filter-run{background:var(--sea);border-color:var(--sea);color:#fff;flex:1}
+.prop-filter-item{display:flex;align-items:center;gap:9px;padding:8px 6px;font-weight:500;cursor:pointer;border-radius:5px}
+.prop-filter-item:hover{background:var(--bg)}
+.prop-filter-item input{width:auto;margin:0;accent-color:var(--sea)}
 @media(max-width:760px){.prop-filter-menu{position:fixed;left:12px;right:12px;top:145px;width:auto;max-height:60vh}}
 </style>
 </head>
@@ -441,7 +443,7 @@ function sharedPropertyFilter(){
   const selected=S.draftProps??(S.selectedProps===null?S.props.map(p=>p.code):[...S.selectedProps]);
   const all=S.props.length>0&&selected.length===S.props.length;
   const label=all?'All properties':selected.length+' properties selected';
-  return `<div class="prop-filter"><label class="prop-filter-label">Hotel</label><button class="prop-filter-toggle" data-a="toggleProps"><b>${label}</b><span style="float:right">⌄</span></button>${S.propMenuOpen?`<div class="prop-filter-menu"><div class="prop-filter-actions"><button data-a="selectAllProps">All Hotels</button><button data-a="clearProps">Clear</button><button class="prop-filter-run" data-a="runProps">Run</button></div>${S.props.map(p=>`<label class="prop-filter-item"><input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code)?'checked':''}><span style="background:${({'HHO':'#0875cf','HSR':'#168cff','VIV':'#8d9db3','JBH':'#24b8e8','HZG':'#42dce8','PCL':'#00a99a','NBG':'#f2b134','NBR':'#df7900','NBV':'#9966cc'})[p.code]||'#0E7C86'}"></span>${p.name}</label>`).join('')}</div>`:''}</div>`;
+  return `<div class="prop-filter"><label class="prop-filter-label">Hotel</label><button type="button" class="prop-filter-toggle" data-a="toggleProps"><b>${label}</b><span aria-hidden="true">⌄</span></button>${S.propMenuOpen?`<div class="prop-filter-menu"><div class="prop-filter-actions"><button type="button" data-a="selectAllProps">All Hotels</button><button type="button" data-a="clearProps">Clear</button><button type="button" class="prop-filter-run" data-a="runProps">Run</button></div>${S.props.map(p=>`<label class="prop-filter-item"><input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code)?'checked':''}>${p.name}</label>`).join('')}</div>`:''}</div>`;
 }
 const selectedCodes=()=>S.selectedProps===null?S.props.map(p=>p.code):S.selectedProps;
 const filterSelected=cs=>cs.filter(c=>selectedCodes().includes(c));
@@ -874,6 +876,13 @@ const A = {
   }
 };
 document.addEventListener('click', async e => { const b=e.target.closest('[data-a]'); if (!b) return; const [a,...v]=b.dataset.a.split(':'); if(!A[a]) return; await A[a](v.join(':')); show(S.view); });
+document.addEventListener('click', e => {
+  if (!S.propMenuOpen || e.target.closest('.prop-filter')) return;
+  S.propMenuOpen = false;
+  S.draftProps = null;
+  show(S.view);
+});
+
 document.addEventListener('change', e => {
   if(e.target.matches('[data-prop-check]')){
     const code=e.target.dataset.propCheck;
