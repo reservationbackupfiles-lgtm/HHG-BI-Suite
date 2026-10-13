@@ -107,21 +107,134 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .confirm-dialog-actions button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 
 
-/* Shared multi-property filter */
-.prop-filter{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;min-width:198px}
-.prop-filter-label{display:block;font-weight:700;font-size:13px;margin:0;color:var(--ink)}
-.prop-filter-toggle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;width:100%;min-width:198px;height:42px;text-align:left;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:space-between}
-.prop-filter-toggle:hover{border-color:#b8cbd1}
-.prop-filter-menu{position:absolute;left:0;top:calc(100% + 5px);z-index:1000;width:300px;max-height:390px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgba(16,36,43,.14);padding:8px}
-.prop-filter-actions{display:flex;gap:6px;position:sticky;top:-8px;background:#fff;padding:2px 0 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
-.prop-filter-actions button,.prop-filter-run{border:1px solid var(--line);border-radius:6px;padding:7px 9px;cursor:pointer;font-weight:700;font-size:12px}
-.prop-filter-actions button{background:#fff;color:var(--ink)}
-.prop-filter-actions button:hover{background:var(--bg)}
-.prop-filter-run{background:var(--sea);border-color:var(--sea);color:#fff;flex:1}
-.prop-filter-item{display:flex;align-items:center;gap:9px;padding:8px 6px;font-weight:500;cursor:pointer;border-radius:5px}
-.prop-filter-item:hover{background:var(--bg)}
-.prop-filter-item input{width:auto;margin:0;accent-color:var(--sea)}
-@media(max-width:760px){.prop-filter-menu{position:fixed;left:12px;right:12px;top:145px;width:auto;max-height:60vh}}
+/* Uniform property dropdown */
+.prop-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.prop-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prop-filter-toggle .prop-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prop-filter-toggle .prop-arrow {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .15s;
+}
+
+.prop-filter-toggle[aria-expanded="true"] .prop-arrow {
+  transform: rotate(225deg) translateY(-1px);
+}
+
+.prop-filter-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 1000;
+  width: 320px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16,36,43,.15);
+}
+
+.prop-filter-actions {
+  display: flex;
+  gap: 6px;
+  position: sticky;
+  top: -10px;
+  padding: 4px 0 9px;
+  margin-bottom: 5px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.prop-filter-actions button,
+.prop-filter-run {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.prop-filter-run {
+  flex: 1;
+  background: var(--sea);
+  color: #fff;
+  border-color: var(--sea);
+}
+
+.prop-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 4px;
+  margin: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prop-filter-item input {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--sea);
+}
+
+.prop-filter-item .prop-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media(max-width:760px) {
+  .prop-filter-menu {
+    position: fixed;
+    top: 145px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+}
 </style>
 </head>
 <body>
