@@ -117,13 +117,35 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 <p style="font-size:12.5px" id="lclock"></p></div></div>
 
 <div id="app" hidden>
-<aside><div class="brand">HHG <b>BI SUITE</b></div>
-<button class="nav" data-v="dash">Dashboard</button><button class="nav" data-v="compare">Compare</button>
-<button class="nav" data-v="pace">Pace</button><button class="nav" data-v="res">Reservations</button>
-<button class="nav" data-v="admin" id="navAdmin" hidden>Upload &amp; logs</button>
-<button class="nav" data-v="users" id="navUsers" hidden>Users</button>
-<div class="who"><span id="me"></span><a id="out">Sign out</a></div></aside>
-<main><div class="top"><h1 id="ttl"></h1><div class="clock"><span id="d"></span><small id="t"></small><small id="acc"></small></div></div><div id="view"></div></main>
+<aside>
+  <div class="brand">HHG <b>BI SUITE</b></div>
+
+  <button class="nav" data-v="dash">Dashboard</button>
+  <button class="nav" data-v="compare">Compare</button>
+  <button class="nav" data-v="pace">Pace</button>
+  <button class="nav" data-v="res">Reservations</button>
+  <button class="nav" data-v="cancel">Cancellations</button>
+
+  <button class="nav" data-v="admin" id="navAdmin" hidden>Upload &amp; logs</button>
+  <button class="nav" data-v="users" id="navUsers" hidden>Users</button>
+
+  <div class="who">
+    <span id="me"></span>
+    <a id="out">Sign out</a>
+  </div>
+</aside>
+
+<main>
+  <div class="top">
+    <h1 id="ttl"></h1>
+    <div class="clock">
+      <span id="d"></span>
+      <small id="t"></small>
+      <small id="acc"></small>
+    </div>
+  </div>
+  <div id="view"></div>
+</main>
 </div>
 
 <div id="toastHost" aria-live="polite" aria-atomic="false"></div>
