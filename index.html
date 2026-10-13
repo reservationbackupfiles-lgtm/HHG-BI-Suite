@@ -735,7 +735,7 @@ async function doUpload(){
       }
       if(rep==='Reservations'){
         const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
-        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({
+       const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({
   property_id:propertyId,
   reservation_no:String(x.reservation_no),
   booking_date:x.booking_date,
@@ -743,6 +743,7 @@ async function doUpload(){
   check_out:x.check_out,
   nights:x.room_nights||0,
   revenue:x.grand_total||0,
+  suggested_deposit:x.suggested_deposit,
   status:x.status||'',
   source:x.source||'',
   ...(x.guest_name ? {guest_name:x.guest_name} : {}),
