@@ -597,7 +597,8 @@ async function load(){
   source: r.source || ''
 })).filter(r => r.property);
     S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
-  }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; }
+    return true;
+  }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
 
 const refreshBtn = document.getElementById('refreshData');
@@ -608,7 +609,8 @@ if (refreshBtn) {
     refreshBtn.textContent = 'Refreshing...';
 
     try {
-      await load();
+      const ok = await load();
+      if (!ok) throw new Error('Could not load data. Check the message on the page.');
       show(S.view);
       refreshBtn.textContent = '✓ Refreshed';
     } catch (error) {
@@ -688,7 +690,7 @@ const sel = (id,l,a,v) => `<div><label for="${id}">${l}</label><select id="${id}
 const propOpts = () => [['ALL','All properties'],...S.props.map(p=>[p.code,p.name])];
 const years = () => [...new Set(S.adr.map(r=>r.year))].sort((a,b)=>b-a);
 const codes = c => c==='ALL' ? S.props.map(p=>p.code) : [c];
-const bind = (ks,fn) => ks.forEach(k => $('#'+k).onchange = e => { S.f[k]=e.target.value; fn(); });
+const bind = (ks,fn) => ks.forEach(k => { const el=$('#'+k); if(el) el.onchange = e => { S.f[k]=e.target.value; fn(); }; });
 const tbl = (h,rows,cls) => `<table${cls?` class="${cls}"`:''}><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
 function filt(){ const f=S.f; f.year??=years()[0]; f.month??='ALL'; return f; }
 const filterBar = noMonth => { const f=filt(); return `<div class="bar">${sharedPropertyFilter()}${sel('year','Year',years().map(y=>[y,y]),f.year)}${noMonth?'':sel('month','Month',[['ALL','All months'],...MN.map((m,i)=>[i+1,m])],f.month)}</div>`; };
@@ -845,7 +847,7 @@ const WIN = [['0–7 days',0,7],['8–14 days',8,14],['15–30 days',15,30],['31
 function cancel(){
   $('#ttl').textContent = 'Cancellations';
   if (!S.res.length) return empty('No reservations yet. An admin needs to upload the Reservations report.');
-  const f = S.f; f.cs ??= 'ALL';
+  const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
   const normalizeSource = x => {
   const s = srcN(x);
@@ -961,18 +963,18 @@ await loadAdminUsers();
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
-  if(error){$('#logbox').innerHTML=`<p class="err">${error.message}</p>`;return;}
+  if(error){const box=$('#logbox');if(box)box.innerHTML=`<p class="err">${error.message}</p>`;return;}
   const goodRows=data.filter(r=>String(r.result||'').toLowerCase()==='ok'||String(r.result||'').toLowerCase()==='saved');
   const ok=new Set(goodRows.map(r=>r.property_id));
   const wait=S.props.filter(p=>!ok.has(p.id)).map(p=>p.name);
-  $('#summary').innerHTML=`<div class="c"><small>Properties updated</small><b>${ok.size} of ${S.props.length}</b><i>${wait.length} waiting</i></div><div class="c"><small>Files received</small><b>${data.length}</b><i>${data.filter(r=>!goodRows.includes(r)).length} with errors</i></div>`;
-  $('#waiting').textContent=wait.length?'Waiting: '+wait.join(' · '):'All properties updated.';
+  const summary=$('#summary'); if(summary) summary.innerHTML=`<div class="c"><small>Properties updated</small><b>${ok.size} of ${S.props.length}</b><i>${wait.length} waiting</i></div><div class="c"><small>Files received</small><b>${data.length}</b><i>${data.filter(r=>!goodRows.includes(r)).length} with errors</i></div>`;
+  const waiting=$('#waiting'); if(waiting) waiting.textContent=wait.length?'Waiting: '+wait.join(' · '):'All properties updated.';
   const pageSize=15, totalPages=Math.max(1,Math.ceil(data.length/pageSize));
   S.logPage=Math.min(Math.max(1,S.logPage||1),totalPages);
   const start=(S.logPage-1)*pageSize, visibleLogs=data.slice(start,start+pageSize);
   const tableHtml=tbl(['Date / Time','Property','Report','Rows','Result'],visibleLogs.map(r=>[new Date(r.created_at).toLocaleString('en-PH',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'}),S.props.find(p=>p.id===r.property_id)?.name||'—',r.report||'—',fmt(r.rows),goodRows.includes(r)?'<span class="status-ok">Saved</span>':`<span class="status-error">${r.message||r.result||'Error'}</span>`]));
   const pager=data.length?`<div class="log-pager"><button type="button" id="logPrev" ${S.logPage<=1?'disabled':''} aria-label="Previous page">‹</button><span>Page <b>${S.logPage}</b> of <b>${totalPages}</b></span><select id="logPageSelect" aria-label="Choose log page">${Array.from({length:totalPages},(_,i)=>`<option value="${i+1}" ${i+1===S.logPage?'selected':''}>Page ${i+1}</option>`).join('')}</select><button type="button" id="logNext" ${S.logPage>=totalPages?'disabled':''} aria-label="Next page">›</button><span class="log-page-count">Showing ${data.length?start+1:0}–${Math.min(start+pageSize,data.length)} of ${data.length} logs · 15 per page</span></div>`:'';
-  $('#logbox').innerHTML=data.length?tableHtml+pager:'<p class="mu">No uploads on this day.</p>';
+  const logbox=$('#logbox'); if(!logbox)return; logbox.innerHTML=data.length?tableHtml+pager:'<p class="mu">No uploads on this day.</p>'; 
   const prev=$('#logPrev'),next=$('#logNext'),pageSelect=$('#logPageSelect');
   if(prev)prev.onclick=()=>{if(S.logPage>1){S.logPage--;loadLog();}};
   if(next)next.onclick=()=>{if(S.logPage<totalPages){S.logPage++;loadLog();}};
