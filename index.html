@@ -108,9 +108,10 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 
 
 /* Shared multi-property filter */
-.prop-filter{position:relative;display:flex;align-items:center;gap:8px}
-.prop-filter-toggle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;min-width:175px;text-align:left;cursor:pointer;color:var(--ink)}
-.prop-filter-menu{position:absolute;right:0;top:44px;z-index:1000;width:300px;max-height:390px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(16,36,43,.2);padding:10px}
+.prop-filter{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;min-width:198px}
+.prop-filter-label{display:block;font-weight:700;font-size:13px;margin:0 0 0 0;color:var(--ink)}
+.prop-filter-toggle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;width:100%;min-width:198px;height:42px;text-align:left;cursor:pointer;color:var(--ink)}
+.prop-filter-menu{position:absolute;left:0;top:66px;z-index:1000;width:300px;max-height:390px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(16,36,43,.2);padding:10px}
 .prop-filter-actions{display:flex;gap:8px;position:sticky;top:-10px;background:#fff;padding:4px 0 9px;border-bottom:1px solid var(--line);margin-bottom:6px}
 .prop-filter-actions button,.prop-filter-run{border:0;border-radius:6px;padding:7px 10px;cursor:pointer;font-weight:700}
 .prop-filter-actions button{background:#f2f5f6;color:var(--ink)}
@@ -440,7 +441,7 @@ function sharedPropertyFilter(){
   const selected=S.draftProps??(S.selectedProps===null?S.props.map(p=>p.code):[...S.selectedProps]);
   const all=S.props.length>0&&selected.length===S.props.length;
   const label=all?'All properties':selected.length+' properties selected';
-  return `<div class="prop-filter"><button class="prop-filter-toggle" data-a="toggleProps">Hotels&nbsp;　<b>${label}</b>　⌄</button>${S.propMenuOpen?`<div class="prop-filter-menu"><div class="prop-filter-actions"><button data-a="selectAllProps">All Hotels</button><button data-a="clearProps">Clear</button><button class="prop-filter-run" data-a="runProps">Run</button></div>${S.props.map(p=>`<label class="prop-filter-item"><input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code)?'checked':''}><span style="background:${({'HHO':'#0875cf','HSR':'#168cff','VIV':'#8d9db3','JBH':'#24b8e8','HZG':'#42dce8','PCL':'#00a99a','NBG':'#f2b134','NBR':'#df7900','NBV':'#9966cc'})[p.code]||'#0E7C86'}"></span>${p.name}</label>`).join('')}</div>`:''}</div>`;
+  return `<div class="prop-filter"><label class="prop-filter-label">Hotel</label><button class="prop-filter-toggle" data-a="toggleProps"><b>${label}</b><span style="float:right">⌄</span></button>${S.propMenuOpen?`<div class="prop-filter-menu"><div class="prop-filter-actions"><button data-a="selectAllProps">All Hotels</button><button data-a="clearProps">Clear</button><button class="prop-filter-run" data-a="runProps">Run</button></div>${S.props.map(p=>`<label class="prop-filter-item"><input type="checkbox" data-prop-check="${p.code}" ${selected.includes(p.code)?'checked':''}><span style="background:${({'HHO':'#0875cf','HSR':'#168cff','VIV':'#8d9db3','JBH':'#24b8e8','HZG':'#42dce8','PCL':'#00a99a','NBG':'#f2b134','NBR':'#df7900','NBV':'#9966cc'})[p.code]||'#0E7C86'}"></span>${p.name}</label>`).join('')}</div>`:''}</div>`;
 }
 const selectedCodes=()=>S.selectedProps===null?S.props.map(p=>p.code):S.selectedProps;
 const filterSelected=cs=>cs.filter(c=>selectedCodes().includes(c));
