@@ -600,8 +600,8 @@ async function start(user){
 }
 async function load(){
   try{
-    const [rawProps, rawAdr, rawRes, rawPace] = await Promise.all([
-      fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots')
+    const [rawProps, rawAdr, rawRes, rawAdrHistory] = await Promise.all([
+      fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('adr_history')
     ]);
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -625,7 +625,8 @@ async function load(){
   status: r.status || '',
   source: r.source || ''
 })).filter(r => r.property);
-    S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    // Pace is derived from daily snapshots of the ADR report, not the separate Pace export.
+    S.pace = rawAdrHistory.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,room_revenue:+r.room_revenue||0};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
     return true;
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
@@ -790,7 +791,7 @@ function compare(){
 /* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) return empty('No pace data yet. An admin needs to upload the Pace Report.');
+  if (!S.pace.length) return empty('No ADR snapshots yet. Upload the ADR report to build Pace history.');
   const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
   const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
   const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
@@ -1057,7 +1058,11 @@ async function doUpload(){
         // with full-month available room nights, so the existing daily table can power monthly KPIs.
         const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
         if(!mapped.length)throw new Error('No ADR rows found.');
-        await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);n=mapped.length;note=r.note+' (monthly totals)';
+        await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);
+        const snap=$('#snap').value||today();
+        const history=mapped.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:x.stay_date,rooms_sold:x.rooms_sold,room_revenue:x.room_revenue}));
+        await chunked(c=>sb.from('adr_history').upsert(c,{onConflict:'property_id,snapshot_date,stay_date'}),history);
+        n=mapped.length;note=r.note+' (monthly totals + pace snapshot '+snap+')';
       }
       if(rep==='Reservations'){
         const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
