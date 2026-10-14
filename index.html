@@ -600,8 +600,9 @@ async function start(user){
 }
 async function load(){
   try{
-    const [rawProps, rawAdr, rawRes, rawPace] = await Promise.all([
-      fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots')
+    const [rawProps, rawAdr, rawRes, rawPace, rawAdrHistory] = await Promise.all([
+      fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots'),
+      fetchAll('adr_history').catch(e => { console.warn('ADR history unavailable; using existing Pace snapshots.', e); return []; })
     ]);
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -625,7 +626,12 @@ async function load(){
   status: r.status || '',
   source: r.source || ''
 })).filter(r => r.property);
-    S.pace = rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    const adrPace = rawAdrHistory.map(r=>{
+      const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
+      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    S.pace = adrPace.length ? adrPace : rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
     return true;
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
@@ -790,11 +796,11 @@ function compare(){
 /* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) return empty('No pace data yet. An admin needs to upload the Pace Report.');
+  if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
   const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
   const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
   const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
-  const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code));
+  const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
   const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
   const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
   const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
@@ -822,7 +828,7 @@ function pace(){
    <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
    <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
   <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
-  <p class="note">Each column is one day's upload. Bold = room nights on the books for the month; grey = occupancy. Green = added since the last upload, red = lost (for example cancellations). Yellow = no file that day.</p></div>`;
+  <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
 }
 
 /* Reservations */
@@ -1053,11 +1059,15 @@ async function doUpload(){
       const rows=await readRows(file); let n=0,note='',snap=null;
       if(rep==='ADR'){
         const r=Imp.parseAdr(rows,prop.code);
-        // The Cloudbeds ADR export is monthly. Store one monthly aggregate on day 01,
-        // with full-month available room nights, so the existing daily table can power monthly KPIs.
+        // Keep the existing monthly ADR aggregate for Dashboard/Compare.
         const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
         if(!mapped.length)throw new Error('No ADR rows found.');
-        await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);n=mapped.length;note=r.note+' (monthly totals)';
+        await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);
+        // Preserve a dated copy so Pace can compare what was on the books at each upload.
+        const snapshotDate=$('#snap').value||today();
+        const history=mapped.map(x=>({property_id:propertyId,snapshot_date:snapshotDate,stay_date:x.stay_date,rooms_sold:x.rooms_sold,room_revenue:x.room_revenue}));
+        await chunked(c=>sb.from('adr_history').upsert(c,{onConflict:'property_id,snapshot_date,stay_date'}),history);
+        n=mapped.length;note=r.note+` (monthly totals; Pace snapshot ${snapshotDate})`;
       }
       if(rep==='Reservations'){
         const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
