@@ -12,6 +12,12 @@
     const d = new Date(s);
     return isNaN(d) ? null : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   };
+  // One name per channel: "Website", "Website/Booking Engine" and "Website / Booking Engine" are the same source
+  const srcName = x => {
+    if (x == null) return x;
+    const s = String(x).trim().replace(/\s*\/\s*/g, ' / ');
+    return /^website( \/ booking engine)?$/i.test(s) ? 'Website / Booking Engine' : s;
+  };
   const find = (rows, test) => rows.findIndex(r => test(r.map(norm)));
   const fail = (what, rows) => { throw new Error(`Could not find ${what}. Is this the right report for this upload slot?`); };
 
@@ -50,19 +56,7 @@
     if (hi <= gi) fail('the "Rooms Sold" header', rows);
     const h = rows[hi].map(norm);
     const col = (from, to, name) => { for (let i = from; i < to; i++) if (h[i] === name) return i; return -1; };
-    const metricAliases = {
-      roomssold: ['roomssold', 'rooms_sold'],
-      roomrevenue: ['roomrevenue', 'totalroomrevenue', 'totalrevenue'],
-      capacity: ['capacity', 'capacitycount', 'customavailablerooms']
-    };
-    const metricCol = (from, to, metric) => {
-      for (const alias of (metricAliases[metric] || [metric])) {
-        const idx = col(from, to, alias);
-        if (idx >= 0) return idx;
-      }
-      return -1;
-    };
-    const C = { ty: n => metricCol(a, b, n), ly: n => metricCol(b, h.length, n) };
+    const C = { ty: n => col(a, b, n), ly: n => col(b, h.length, n) };
     const snap = override || generatedDate(rows);
     if (!snap) throw new Error('No "Generated at" date in the file. Enter the snapshot date.');
     const out = [];
@@ -71,8 +65,8 @@
       if (!m) continue;
       const v = (w, n) => num(r[C[w](n)]);
       out.push({ property: code, snapshot_date: snap, month_no: +m[1], day: +m[2],
-        ty_rooms_sold: v('ty', 'roomssold'), ty_room_revenue: v('ty', 'roomrevenue'), ty_capacity: v('ty', 'capacity'),
-        ly_rooms_sold: v('ly', 'roomssold'), ly_room_revenue: v('ly', 'roomrevenue'), ly_capacity: v('ly', 'capacity') });
+        ty_rooms_sold: v('ty', 'roomssold'), ty_room_revenue: v('ty', 'totalroomrevenue'), ty_capacity: v('ty', 'capacity'),
+        ly_rooms_sold: v('ly', 'roomssold'), ly_room_revenue: v('ly', 'totalroomrevenue'), ly_capacity: v('ly', 'capacity') });
     }
     if (!out.length) fail('stay-date rows (MM-DD)', rows);
     return { rows: out, snap, note: `snapshot ${snap}` };
@@ -81,35 +75,7 @@
   function parseRes(rows, code) {
     const hi = find(rows, n => n.includes('reservationstatus') && n.includes('checkindate'));
     if (hi < 0) fail('the "Reservation Status / Check-In Date" header', rows);
-    const keys = rows[hi].map(norm);
-    // Accept the exact Cloudbeds column names, plus common export variants.
-    const aliases = {
-      bookingdatetimeproperty: ['bookingdatetimeproperty', 'bookingdate', 'bookingdatetime'],
-      reservationnumber: ['reservationnumber', 'reservationno', 'confirmationnumber'],
-      reservationstatus: ['reservationstatus', 'status'],
-      checkindate: ['checkindate', 'checkin'],
-      checkoutdate: ['checkoutdate', 'checkout'],
-      primaryguestfullname: ['primaryguestfullname', 'guestname', 'guestfullname'],
-      roomtypes: ['roomtypes', 'roomtype', 'accommodationname'],
-      reservationsource: ['reservationsource', 'source'],
-      reservationsourcecategory: ['reservationsourcecategory', 'sourcecategory'],
-      roomnights: ['roomnights', 'nights'],
-      guestcount: ['guestcount', 'guests'],
-      suggesteddeposit: ['suggesteddeposit'],
-      grandtotal: ['grandtotal', 'total'],
-      roomrevenuetotal: ['roomrevenuetotal', 'roomrevenue'],
-      totalreservationtaxes: ['totalreservationtaxes', 'reservationtaxes'],
-      reservationpaidamount: ['reservationpaidamount', 'paidamount'],
-      reservationbalancedue: ['reservationbalancedue', 'balancedue']
-    };
-    const colIndex = k => {
-      for (const alias of (aliases[k] || [k])) {
-        const i = keys.indexOf(norm(alias));
-        if (i >= 0) return i;
-      }
-      return -1;
-    };
-    const g = (r, k) => { const i = colIndex(k); return i < 0 ? null : r[i]; };
+    const keys = rows[hi].map(norm), g = (r, k) => r[keys.indexOf(k)];
     const out = [];
     for (const r of rows.slice(hi + 1)) {
       const bd = iso(g(r, 'bookingdatetimeproperty'));
@@ -118,7 +84,7 @@
       let nights = num(g(r, 'roomnights'));
       if (nights == null && cin && cout) nights = Math.round((new Date(cout) - new Date(cin)) / 864e5);
       out.push({ property: code, reservation_no: g(r, 'reservationnumber') || null, booking_date: bd, status: g(r, 'reservationstatus'),
-        guest_name: String(g(r, 'primaryguestfullname') ?? '').trim() || null, room_type: String(g(r, 'roomtypes') ?? '').trim() || null, source: g(r, 'reservationsource'), source_category: g(r, 'reservationsourcecategory'),
+        room_type: g(r, 'roomtypes'), source: srcName(g(r, 'reservationsource')), source_category: g(r, 'reservationsourcecategory'),
         check_in: cin, check_out: cout, room_nights: nights, guests: num(g(r, 'guestcount')),
         suggested_deposit: num(g(r, 'suggesteddeposit')), grand_total: num(g(r, 'grandtotal')), room_revenue: num(g(r, 'roomrevenuetotal')),
         taxes: num(g(r, 'totalreservationtaxes')), paid: num(g(r, 'reservationpaidamount')), balance_due: num(g(r, 'reservationbalancedue')) });
@@ -126,6 +92,19 @@
     const ds = out.map(r => r.booking_date).sort();
     return { rows: out, from: ds[0], to: ds.at(-1), note: `booked ${ds[0]} to ${ds.at(-1)}` };
   }
-  root.Imp = { parseAdr, parsePace, parseRes };
+  // Which report is this? Lets the admin select all files at once.
+  function detect(rows) {
+    if (find(rows, n => n.includes('date') && n.some(k => /^adr\d{4}$/.test(k))) >= 0) return 'ADR';
+    if (find(rows, n => n.includes('reservationstatus') && n.includes('checkindate')) >= 0) return 'Reservations';
+    if (find(rows, n => n.includes('thisyear') && n.includes('lastyear')) >= 0) return 'Pace';
+    return null;
+  }
+  // "Generated at 2026-08-07 02:59:56 UTC" -> sortable text. Used so that, if two files of the same report
+  // are selected (e.g. "Pace Report (1)" and "Pace Report (2)"), the newest one is applied last and wins.
+  function generatedAt(rows) {
+    for (const r of rows.slice(0, 8)) { const m = String(r[0] ?? '').match(/Generated at (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)/); if (m) return m[1]; }
+    return '';
+  }
+  root.Imp = { parseAdr, parsePace, parseRes, detect, generatedAt };
   if (typeof module !== 'undefined') module.exports = root.Imp;
 })(typeof window !== 'undefined' ? window : globalThis);
