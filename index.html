@@ -880,7 +880,7 @@ function res(){
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Guest name','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.guest_name||'–',r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
   bind(['st','sr'], res);
 }
-  /* Cancellations: revenue lost, cancellation window and sources */
+/* Cancellations: revenue lost, cancellation window and sources */
 const srcN = x => { const s = String(x ?? '–').trim().replace(/\s*\/\s*/g, ' / '); return /^website( \/ booking engine)?$/i.test(s) ? 'Website / Booking Engine' : s; };
 const WIN = [['0–7 days',0,7],['8–14 days',8,14],['15–30 days',15,30],['31–60 days',31,60],['61–90 days',61,90],['91+ days',91,1e9]];
 function cancel(){
@@ -889,18 +889,18 @@ function cancel(){
   const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
   const normalizeSource = x => {
-  const s = srcN(x);
-  const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const aliases = {
-    elnidogo: 'El Nido Go',
-    affiliated: 'Affiliated',
-    potentialinvestor: 'Potential & Investors',
-    potentialinvestors: 'Potential & Investors'
+    const s = srcN(x);
+    const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const aliases = {
+      elnidogo: 'El Nido Go',
+      affiliated: 'Affiliated',
+      potentialinvestor: 'Potential & Investors',
+      potentialinvestors: 'Potential & Investors'
+    };
+    return aliases[k] || s;
   };
-  return aliases[k] || s;
-};
-const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
-  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
+  const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
+  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
   const lead = r => r.check_in && r.booking_date ? Math.max(0, Math.round((new Date(r.check_in)-new Date(r.booking_date))/864e5)) : null;
   const Cn = r => r.status==='Cancelled', lost = r => +r.suggested_deposit||0;
   const sum = (a,fn) => a.reduce((s,r)=>s+fn(r),0), avg = a => a.length ? sum(a,x=>x)/a.length : NaN;
@@ -938,8 +938,9 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
   <div class="p"><h3>Largest losses, per cancelled reservation</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Revenue lost'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
-  bind(['cp','cs'], cancel);
+  bind(['cs'], cancel);
 }
+
 
 function showUploadConfirm(message){
   return new Promise(resolve=>{
