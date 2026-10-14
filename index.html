@@ -796,7 +796,7 @@ function pace(){
   const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
   const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code));
   const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
-  const cap = c => { for (let d=ld; d>=1; d--){ const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; if (r) return +r.ty_capacity; } return 0; };
+  const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
   const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
   const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
   const TA = cs.reduce((s,p)=>s+cap(p.code),0);
