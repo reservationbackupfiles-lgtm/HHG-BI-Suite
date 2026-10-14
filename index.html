@@ -603,7 +603,7 @@ async function load(){
     const [rawProps, rawAdr, rawRes, rawPace] = await Promise.all([
       fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots')
     ]);
-    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'VIV'};
+    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
     S.pm = Object.fromEntries(S.props.map(p=>[p.code,p]));
     const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
