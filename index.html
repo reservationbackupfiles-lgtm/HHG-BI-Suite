@@ -389,7 +389,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
-<script src="importer.js?v=20261012-guest-room"></script>
+<script src="importer.js?v=20261014-multi-upload"></script>
 <script>
 const sb = supabase.createClient(CFG.url, CFG.key);
 const $ = s => document.querySelector(s);
@@ -967,38 +967,25 @@ async function admin(){
   const propOptions = S.props.map(p=>[p.id,p.name]);
   $('#view').innerHTML = `<div class="admin-grid"><section class="upload-card"><h3>Upload reports</h3>
     <div class="admin-select"><label for="upP">Property</label><select id="upP">${opts(propOptions,S.props[0]?.id)}</select></div>
-    <p class="note">Choose the report type for each file. Filenames can be different; the selected report type tells the system how to process each file. Supports .xlsx, .xls, and .csv.</p>
-    <label class="upload-field"><span>File 1</span><select id="type1"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f1" type="file" accept=".xlsx,.xls,.csv"></label>
-    <label class="upload-field"><span>File 2</span><select id="type2"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f2" type="file" accept=".xlsx,.xls,.csv"></label>
-    <label class="upload-field"><span>File 3</span><select id="type3"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f3" type="file" accept=".xlsx,.xls,.csv"></label>
-    <label class="upload-field"><span>File 4</span><select id="type4"><option value="ADR">Average Daily Rate (ADR)</option><option value="Reservations">Reservations by Booking Date</option><option value="Pace">Pace Report</option></select><input id="f4" type="file" accept=".xlsx,.xls,.csv"></label>
-    <div class="admin-select"><label for="snap">Pace snapshot date</label><input id="snap" type="date" value="${today()}"></div>
-    <button class="btn" id="up">Upload</button></section>
+    <p class="note">Select the report files for this property together. The system identifies each report from its contents, so filenames and selection order do not matter. Supports .xlsx, .xls, and .csv.</p>
+    <label class="upload-field" for="fAll"><span>Choose report files (up to 4)</span><input id="fAll" type="file" accept=".xlsx,.xls,.csv" multiple></label>
+    <div id="fl" class="note">No files selected.</div>
+    <div class="admin-select"><label for="snap">Snapshot date</label><input id="snap" type="date" value="${today()}"><p class="note">Used for ADR history and as an override for Pace reports.</p></div>
+    <button class="btn" id="up">Upload selected files</button></section>
     <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
     <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
     <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
+  $('#fAll').onchange = showSelectedFiles;
   $('#up').onclick = async () => {
-  const propName = $('#upP').selectedOptions[0]?.textContent || 'the selected property';
-  const count = [1,2,3,4].filter(i => $('#f'+i).files[0]).length;
-
-  if (!count) {
-    toast('Choose at least one report file.','error');
-    return;
-  }
-
-  if (await showUploadConfirm(`Are you sure you want to upload <b>${count}</b> selected report file(s) for <b>${propName}</b>?`)) {
-    doUpload();
-  }
-};
-
-$('#ld').onchange = e => {
-  S.logDate = e.target.value || today();
-  S.logPage = 1;
-  loadLog();
-};
-
-await loadLog();
-await loadAdminUsers();
+    const files=[...$('#fAll').files];
+    const propName=$('#upP').selectedOptions[0]?.textContent||'the selected property';
+    if(!files.length){toast('Choose at least one report file.','error');return;}
+    if(files.length>4){toast('Select up to 4 report files for one property.','error');return;}
+    if(await showUploadConfirm(`Upload <b>${files.length}</b> selected report file(s) for <b>${propName}</b>?`)) await doUpload();
+  };
+  $('#ld').onchange = e => { S.logDate = e.target.value || today(); S.logPage = 1; loadLog(); };
+  await loadLog();
+  await loadAdminUsers();
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
@@ -1046,59 +1033,75 @@ async function loadAdminUsers(){
 const readRows = async f => { const wb = XLSX.read(await f.arrayBuffer(),{type:'array'}); return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:null,raw:true}); };
 const chunked = async (fn,rows) => { for (let i=0;i<rows.length;i+=500){ const {error}=await fn(rows.slice(i,i+500)); if (error) throw error; } };
 const logUp = o => sb.from('upload_log').insert({user_email:S.user.email,...o});
+async function showSelectedFiles(){
+  const box=$('#fl'); if(!box)return;
+  const files=[...$('#fAll').files];
+  if(!files.length){box.textContent='No files selected.';return;}
+  box.innerHTML=(await Promise.all(files.map(async f=>{
+    try{const rows=await readRows(f),rep=Imp.detect(rows);return `${f.name} → ${rep?`<b>${rep==='ADR'?'Average Daily Rate (ADR)':rep==='Reservations'?'Reservations by Booking Date':'Pace Report'}</b>`:'<span class="dn">Report type not recognized</span>'}`;}
+    catch(e){return `${f.name} → <span class="dn">Cannot read file: ${String(e.message||e)}</span>`;}
+  }))).join('<br>');
+}
 async function doUpload(){
   const propertyId=+$('#upP').value, prop=S.props.find(p=>p.id===propertyId), L=m=>$('#log').textContent+=m+'\n';
-  if(!prop){L('Choose a property.');toast('Choose a property before uploading.','error');return;}
-  const jobs=[1,2,3,4].map(i=>({rep:$('#type'+i).value,id:'f'+i,file:$('#f'+i).files[0]})).filter(j=>j.file).map(j=>({...j,label:j.rep==='ADR'?'ADR':j.rep==='Reservations'?'Reservations by Booking Date':'Pace Report'}));
-  $('#log').textContent=''; if(!jobs.length){L('Choose at least one file.');toast('Choose at least one report file.','error');return;}
-  const selectedList=jobs.map(j=>`${j.label}: ${j.file.name}`).join(' · ');
-  toast(`Confirmed: ${jobs.length} file(s) for ${prop.name}. Upload starting.`);
-  $('#up').disabled=true;
-  for(const {rep,id,file,label} of jobs){
+  if(!prop){toast('Choose a property before uploading.','error');return;}
+  const files=[...$('#fAll').files];
+  $('#log').textContent='';
+  if(!files.length){L('Choose the report files.');toast('Choose at least one report file.','error');return;}
+  if(files.length>4){L('Select up to 4 files for one property.');toast('Select up to 4 files for one property.','error');return;}
+  $('#up').disabled=true; $('#up').textContent='Uploading…';
+  const jobs=[];
+  for(const file of files){
     try{
-      const rows=await readRows(file); let n=0,note='',snap=null;
+      const rows=await readRows(file), rep=Imp.detect(rows);
+      if(!rep)throw new Error('Could not identify report type from file contents.');
+      jobs.push({rep,rows,file,generated:Imp.generatedAt(rows)||''});
+    }catch(e){
+      const m=String(e.message||e);L(`${file.name}: ${m}`);
+      const {error:logError}=await logUp({property_id:propertyId,report:'Unknown',rows:0,result:'error',message:(file.name+': '+m).slice(0,300)});
+      if(logError)L(`Log warning: ${logError.message}`);
+    }
+  }
+  const order={ADR:0,Reservations:1,Pace:2};
+  jobs.sort((a,b)=>order[a.rep]-order[b.rep]||(a.generated<b.generated?-1:a.generated>b.generated?1:0));
+  for(const {rep,rows,file} of jobs){
+    try{
+      let n=0,note='',snap=null;
       if(rep==='ADR'){
         const r=Imp.parseAdr(rows,prop.code);
-        // Keep the existing monthly ADR aggregate for Dashboard/Compare.
         const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
         if(!mapped.length)throw new Error('No ADR rows found.');
         await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);
-        // Preserve a dated copy so Pace can compare what was on the books at each upload.
-        const snapshotDate=$('#snap').value||today();
-        const history=mapped.map(x=>({property_id:propertyId,snapshot_date:snapshotDate,stay_date:x.stay_date,rooms_sold:x.rooms_sold,room_revenue:x.room_revenue}));
+        snap=$('#snap').value||today();
+        const history=mapped.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:x.stay_date,rooms_sold:x.rooms_sold,room_revenue:x.room_revenue}));
         await chunked(c=>sb.from('adr_history').upsert(c,{onConflict:'property_id,snapshot_date,stay_date'}),history);
-        n=mapped.length;note=r.note+` (monthly totals; Pace snapshot ${snapshotDate})`;
-      }
-      if(rep==='Reservations'){
-        const r=Imp.parseRes(rows,prop.code); if(!r.rows.length)throw new Error('No reservations found in the file.');
-       const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({
-  property_id:propertyId,
-  reservation_no:String(x.reservation_no),
-  booking_date:x.booking_date,
-  check_in:x.check_in,
-  check_out:x.check_out,
-  nights:x.room_nights||0,
-  revenue:x.grand_total||0,
-  suggested_deposit:x.suggested_deposit,
-  status:x.status||'',
-  source:x.source||'',
-  ...(x.guest_name ? {guest_name:x.guest_name} : {}),
-  ...(x.room_type ? {room_type:x.room_type} : {})
-}));
+        n=mapped.length;note=r.note+` (monthly totals; Pace snapshot ${snap})`;
+      } else if(rep==='Reservations'){
+        const r=Imp.parseRes(rows,prop.code);
+        if(!r.rows.length)throw new Error('No reservations found in the file.');
+        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({property_id:propertyId,reservation_no:String(x.reservation_no),booking_date:x.booking_date,check_in:x.check_in,check_out:x.check_out,nights:x.room_nights||0,revenue:x.grand_total||0,suggested_deposit:x.suggested_deposit,status:x.status||'',source:x.source||'',...(x.guest_name?{guest_name:x.guest_name}:{}),...(x.room_type?{room_type:x.room_type}:{})}));
         if(!mapped.length)throw new Error('No rows with reservation numbers were found; no existing data was changed.');
-        await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);n=mapped.length;note=r.note+' (upserted; existing rows not deleted)';
-      }
-      if(rep==='Pace'){
+        await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);
+        n=mapped.length;note=r.note+' (upserted; existing rows not deleted)';
+      } else if(rep==='Pace'){
         const r=Imp.parsePace(rows,prop.code,$('#snap').value||null);snap=r.snap;
         const mapped=r.rows.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:`${(+snap.slice(5,7)>x.month_no?+snap.slice(0,4)+1:+snap.slice(0,4))}-${pad(x.month_no)}-${pad(x.day)}`,room_nights:x.ty_rooms_sold||0}));
         if(!mapped.length)throw new Error('No Pace rows found.');
-        await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);n=mapped.length;note=`snapshot ${snap}`;
+        await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);
+        n=mapped.length;note=`snapshot ${snap}`;
       }
-      L(`${label}: ${n} rows saved (${note}).`); toast(`${label}: ${n} rows saved successfully.`);
-      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}
-    }catch(e){const m=String(e.message||JSON.stringify(e));L(`${label}: ${m}`);toast(`${label} upload failed: ${m}`,'error',5000);const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});if(logError){L(`Log warning: ${logError.message}`);toast(`Upload log warning: ${logError.message}`,'error',5000);}}
+      L(`${file.name} → ${rep}: ${n} rows saved (${note}).`);
+      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});
+      if(logError)L(`Log warning: ${logError.message}`);
+      toast(`${rep}: ${n} rows saved successfully.`);
+    }catch(e){
+      const m=String(e.message||JSON.stringify(e));L(`${file.name} → ${rep}: ${m}`);
+      toast(`${rep} upload failed: ${m}`,'error',5000);
+      const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:0,result:'error',message:m.slice(0,300)});
+      if(logError)L(`Log warning: ${logError.message}`);
+    }
   }
-  await load();L('Done.');toast('Upload process completed.');await loadLog();
+  await load();L('Done.');$('#up').disabled=false;$('#up').textContent='Upload selected files';await loadLog();
 }
 /* Users (admin) */
 async function users(){
