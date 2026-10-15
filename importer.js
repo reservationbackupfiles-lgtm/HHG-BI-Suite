@@ -94,7 +94,9 @@
         taxes: num(g(r, 'totalreservationtaxes')), paid: num(g(r, 'reservationpaidamount')), balance_due: num(g(r, 'reservationbalancedue')) });
     }
     const ds = out.map(r => r.booking_date).sort();
-    return { rows: out, from: ds[0], to: ds.at(-1), note: `booked ${ds[0]} to ${ds.at(-1)}` };
+    const named = out.filter(r => r.guest_name).length;
+    const missingNo = out.filter(r => !r.reservation_no).length;
+    return { rows: out, from: ds[0], to: ds.at(-1), note: `booked ${ds[0]} to ${ds.at(-1)} · guest names ${named}/${out.length} · missing reservation numbers ${missingNo}` };
   }
   // Which report is this? Lets the admin select all files at once.
   function detect(rows) {
