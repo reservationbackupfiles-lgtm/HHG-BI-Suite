@@ -401,7 +401,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
-<script src="importer.js?v=20261014-multi-upload"></script>
+<script src="importer.js?v=20261015-guest-hover-source"></script>
 <script>
 const sb = supabase.createClient(CFG.url, CFG.key);
 const $ = s => document.querySelector(s);
@@ -610,6 +610,14 @@ async function start(user){
   await load();
   show(S.view);
 }
+function sourceCategory(value){
+  const s=String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
+  if(!s) return 'Direct';
+  // Direct channels must be checked first: "Website / Booking Engine" contains "Booking".
+  if(/website|booking\s*engine|walk[ -]?in|direct|phone|telephone|email|whatsapp|facebook|instagram|call.?in/i.test(s)) return 'Direct';
+  if(/booking\.com|agoda|priceline|expedia|airbnb|ctrip|trip\.com|traveloka|hotels?\.com|hostelworld|orbitz|hopper|makemytrip|hotelbeds|webbeds|ota/i.test(s)) return 'OTA';
+  return 'Direct';
+}
 async function load(){
   try{
     const [rawProps, rawAdr, rawRes, rawPace, rawAdrHistory] = await Promise.all([
@@ -627,9 +635,7 @@ async function load(){
   room_nights: +r.nights || 0,
   grand_total: +r.revenue || 0,
   suggested_deposit: +r.suggested_deposit || 0,
-  source_category: /booking|agoda|expedia|ota/i.test(r.source || '')
-    ? 'OTA'
-    : 'Direct',
+  source_category: r.source_category || sourceCategory(r.source),
   guest_name: r.guest_name || '',
   room_type: r.room_type || '',
   check_in: r.check_in,
@@ -762,7 +768,7 @@ function kc(t,a,b,f,pts){
 }
 function mk(id, type, labels, sets, fm, horiz){
   charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
-    options:{indexAxis:horiz?'y':'x', maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    options:{indexAxis:horiz?'y':'x', maintainAspectRatio:false, interaction:{mode:'index',axis:horiz?'y':'x',intersect:false},
       plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+fm(horiz?c.parsed.x:c.parsed.y)}}}, scales:{[horiz?'x':'y']:{ticks:{callback:v=>fm(v)}}}}}));
 }
 const ds = (label,data,c) => ({label, data, backgroundColor:c, borderColor:c});
@@ -1131,10 +1137,11 @@ async function doUpload(){
       } else if(rep==='Reservations'){
         const r=Imp.parseRes(rows,prop.code);
         if(!r.rows.length)throw new Error('No reservations found in the file.');
-        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({property_id:propertyId,reservation_no:String(x.reservation_no),booking_date:x.booking_date,check_in:x.check_in,check_out:x.check_out,nights:x.room_nights||0,revenue:x.grand_total||0,suggested_deposit:x.suggested_deposit,status:x.status||'',source:x.source||'',...(x.guest_name?{guest_name:x.guest_name}:{}),...(x.room_type?{room_type:x.room_type}:{})}));
+        const mapped=r.rows.filter(x=>x.reservation_no).map(x=>({property_id:propertyId,reservation_no:String(x.reservation_no),booking_date:x.booking_date,check_in:x.check_in,check_out:x.check_out,nights:x.room_nights||0,revenue:x.grand_total||0,suggested_deposit:x.suggested_deposit||0,status:x.status||'',source:x.source||'',source_category:x.source_category||sourceCategory(x.source),guest_name:x.guest_name||null,room_type:x.room_type||null}));
+        const skipped=r.rows.length-mapped.length;
         if(!mapped.length)throw new Error('No rows with reservation numbers were found; no existing data was changed.');
         await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);
-        n=mapped.length;note=r.note+' (upserted; existing rows not deleted)';
+        n=mapped.length;note=r.note+` (upserted; ${mapped.filter(x=>x.guest_name).length} with guest names; ${skipped} skipped: no reservation number; existing rows not deleted)`;
       } else if(rep==='Pace'){
         const r=Imp.parsePace(rows,prop.code,$('#snap').value||null);snap=r.snap;
         const mapped=r.rows.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:`${(+snap.slice(5,7)>x.month_no?+snap.slice(0,4)+1:+snap.slice(0,4))}-${pad(x.month_no)}-${pad(x.day)}`,room_nights:x.ty_rooms_sold||0}));
