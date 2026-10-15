@@ -56,6 +56,18 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .pill select{width:auto;border:0;background:transparent;padding:5px 2px;font-weight:700}.cb{border:0;background:none;padding:5px 2px;cursor:pointer;color:var(--ink)}
 .rst{background:none;border:1px solid #C9D5DA;border-radius:999px;padding:6px 14px;font-weight:700;color:var(--mut);cursor:pointer}
 .chipw{position:relative}
+
+/* Daily booking/cancellation grid */
+.ov{position:fixed;inset:0;background:rgba(16,36,43,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100}
+.dlg{background:#fff;border-radius:12px;padding:18px;width:100%;max-width:980px;max-height:85vh;overflow:auto}.dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.dh h3{margin:0;font-size:17px}
+.dd{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+.dd th,.dd td{padding:3px 5px;text-align:center;font-size:13px;line-height:1.4;border-bottom:0;white-space:nowrap;background:#fff}
+.dd th{background:#F7F9FA;color:var(--mut);text-align:center;font-size:12px}.dd td.n{min-width:56px}
+.dd .f{position:sticky;left:0;z-index:2;min-width:130px;text-align:left;vertical-align:top}
+.dd .m{position:sticky;left:130px;z-index:2;min-width:90px;text-align:left;color:var(--mut);border-right:2px solid var(--line)}
+.dd .end{border-bottom:1px solid var(--line)}.dd .al{background:#EEF6F7}.dd .t{border-left:2px solid var(--line);font-weight:700}.dd th.f,.dd th.m{background:#F7F9FA}
+.cb3{border:0;background:none;padding:2px 4px;cursor:pointer;color:inherit;font:inherit;border-radius:4px}.cb3:hover{background:#D5EBED}
+.daygrid-scroll{overflow-x:auto;max-width:100%;}
 .pop{position:absolute;top:46px;left:0;z-index:20;width:330px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(16,36,43,.2)}
 .ph{display:flex;gap:8px;align-items:center;margin-bottom:12px}.ps{display:flex;flex:1;border:1px solid #C9D5DA;border-radius:8px;overflow:hidden}.ps select{border:0;border-radius:0}
 .nb{width:38px;height:38px;border:1px solid #C9D5DA;border-radius:8px;background:#fff;font-size:18px;cursor:pointer}
@@ -408,7 +420,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -717,6 +729,7 @@ function show(v){
   S.view = v; charts.forEach(c=>c.destroy()); charts = [];
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
   V[v]();
+  if (S.dd && v!=='admin' && v!=='users') $('#view').insertAdjacentHTML('beforeend', ddPop());
 }
 document.querySelectorAll('.nav').forEach(b => b.onclick = () => show(b.dataset.v));
 const empty = m => { $('#view').innerHTML = `<p class="mu">${m}</p>`; };
@@ -831,6 +844,43 @@ function pace(){
   <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
 }
 
+/* Day grid (bookings received / cancelled): rows = days, columns = hotels. Click a number for the bookings behind it. */
+const sm = (x,k) => x.reduce((s,r)=>s+(+r[k]||0),0);
+function dayGrid(a, o){
+  const f = S.f, mOf = r => (o.key(r)||'').slice(0,7), ms = [...new Set(a.map(mOf).filter(Boolean))].sort();
+  if (!ms.includes(f[o.mkey])) f[o.mkey] = ms.at(-1);
+  const m = f[o.mkey]; if (!m) return '';
+  const rows = a.filter(r=>mOf(r)===m).map(r=>({...r,_k:o.key(r),_v:o.val(r)})), mo = +m.slice(5), nd = dim(+m.slice(0,4),mo);
+  S.dsrc[o.kind] = {rows, vlabel:o.vlabel, month:MN[mo-1]+' '+m.slice(0,4)};
+  const hs = S.props.filter(p=>rows.some(r=>r.property===p.code)), last = Math.max(...rows.map(r=>+r._k.slice(8)));
+  const sel = (d,c) => rows.filter(r=>(!d||+r._k.slice(8)===d) && (c==='ALL'||r.property===c));
+  const lab = [o.l0,'Nights',o.l2];
+  // one block per hotel: three lines (count, nights, revenue), one column per day, Total at the end
+  const block = (code,name,al) => [0,1,2].map(k => {
+    const end = k===2 ? ' end' : '';
+    let r = `<tr>${k===0?`<td class="f${end}${al}" rowspan="3"><b>${name}</b></td>`:''}<td class="m${end}${al}">${lab[k]}</td>`;
+    for (const d of [...Array(nd).keys()].map(i=>i+1).concat(0)){
+      const x = d>last && d ? null : sel(d,code), v = x ? [x.length,sm(x,'room_nights'),sm(x,'_v')][k] : null, cls = `n${end}${al}${d?'':' t'}`;
+      r += `<td class="${cls}">${x===null?'':v?`<button class="cb3" data-a="dd:${o.kind}:${d}:${code}">${fmt(v)}</button>`:'<span class="mu">–</span>'}</td>`;
+    }
+    return r+'</tr>';
+  }).join('');
+  const head = `<tr><th class="f">Hotel</th><th class="m">Metric</th>${[...Array(nd).keys()].map(i=>`<th>${i+1}</th>`).join('')}<th class="t">Total</th></tr>`;
+  return `<div class="p"><h3>${o.title}</h3><div class="bar" style="margin-bottom:10px">${spill(o.mkey,'Month',ms.map(x=>[x,MN[+x.slice(5)-1]+' '+x.slice(0,4)]),m)}${o.extra||''}</div>
+  <div class="daygrid-scroll"><table class="dd">${head}${hs.map(p=>block(p.code,p.name,'')).join('')}${block('ALL','All hotels',' al')}</table></div>
+  <p class="note">${o.note} Scroll sideways for the rest of the month. Click a number to see the bookings behind it.</p></div>`;
+}
+function ddPop(){
+  const d = S.dd, src = S.dsrc[d.kind]; if (!src) return '';
+  const x = src.rows.filter(r=>(!d.d||+r._k.slice(8)===d.d) && (d.c==='ALL'||r.property===d.c)).sort((a,b)=>(a.check_in||'')<(b.check_in||'')?-1:1);
+  const nm = d.c==='ALL' ? 'All hotels' : (S.pm[d.c]?.name||d.c), all = d.c==='ALL';
+  const head = [...(all?['Hotel']:[]),'Guest name','Check-in','Check-out','Source','Room type','Nights',src.vlabel];
+  const body = x.map(r=>[...(all?[S.pm[r.property]?.name||r.property]:[]),r.guest_name||'–',r.check_in?fd(r.check_in):'–',r.check_out?fd(r.check_out):'–',r.src||r.source||'–',r.room_type&&r.room_type!=='-'?r.room_type:'–',fmt(r.room_nights),php(r._v)]);
+  body.push([...(all?['']:[]),`<b>${x.length} bookings</b>`,'','','','',`<b>${fmt(sm(x,'room_nights'))}</b>`,`<b>${php(sm(x,'_v'))}</b>`]);
+  return `<div class="ov" data-a="ddx"><div class="dlg" role="dialog" aria-modal="true" aria-label="Booking details" data-a="noop"><div class="dh"><h3>${nm} · ${d.d?src.month.slice(0,3)+' '+d.d:src.month}</h3><button class="nb" data-a="ddx" aria-label="Close">✕</button></div>${tbl(head,body)}<p class="note">Guest names appear when the PMS export includes them.</p></div></div>`;
+}
+
+
 /* Reservations */
 const rtext = r => !r ? 'All' : r.s===r.e ? fd(r.s) : fd(r.s)+' – '+fd(r.e);
 const fd = i => MN[+i.slice(5,7)-1]+' '+i.slice(8);
@@ -873,14 +923,15 @@ function res(){
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
   <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div><div class="c"><small>Value lost</small><b class="dn">${php(T.lost)}</b><i>from cancelled bookings</i></div></div>
+  ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
   <div class="p res-scroll-card"><h3>By booking date</h3><div class="res-table-scroll">${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}</div>
   <p class="note">OTA ${fmt(ota)} (${pct(rs.length?ota/rs.length:NaN)}) · Direct ${fmt(rs.filter(r=>r.source_category==='Direct').length)}</p></div></div>
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Guest name','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.guest_name||'–',r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
-  bind(['st','sr'], res);
+  bind(['st','sr','bm'], res);
 }
-/* Cancellations: revenue lost, cancellation window and sources */
+  /* Cancellations: revenue lost, cancellation window and sources */
 const srcN = x => { const s = String(x ?? '–').trim().replace(/\s*\/\s*/g, ' / '); return /^website( \/ booking engine)?$/i.test(s) ? 'Website / Booking Engine' : s; };
 const WIN = [['0–7 days',0,7],['8–14 days',8,14],['15–30 days',15,30],['31–60 days',31,60],['61–90 days',61,90],['91+ days',91,1e9]];
 function cancel(){
@@ -889,18 +940,18 @@ function cancel(){
   const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
   const normalizeSource = x => {
-    const s = srcN(x);
-    const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const aliases = {
-      elnidogo: 'El Nido Go',
-      affiliated: 'Affiliated',
-      potentialinvestor: 'Potential & Investors',
-      potentialinvestors: 'Potential & Investors'
-    };
-    return aliases[k] || s;
+  const s = srcN(x);
+  const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const aliases = {
+    elnidogo: 'El Nido Go',
+    affiliated: 'Affiliated',
+    potentialinvestor: 'Potential & Investors',
+    potentialinvestors: 'Potential & Investors'
   };
-  const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
-  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
+  return aliases[k] || s;
+};
+const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
+  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
   const lead = r => r.check_in && r.booking_date ? Math.max(0, Math.round((new Date(r.check_in)-new Date(r.booking_date))/864e5)) : null;
   const Cn = r => r.status==='Cancelled', lost = r => +r.suggested_deposit||0;
   const sum = (a,fn) => a.reduce((s,r)=>s+fn(r),0), avg = a => a.length ? sum(a,x=>x)/a.length : NaN;
@@ -934,13 +985,13 @@ function cancel(){
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
   <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Revenue lost = the booking value before cancellation (Suggested Deposit, since cancelled bookings show a Grand Total of 0). The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
   ${cards}
+  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Value lost (₱)',vlabel:'Value lost',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the revenue lost.'})}
   <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Revenue lost','Average lost'],winRows)}</div>
   <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
   <div class="p"><h3>Largest losses, per cancelled reservation</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Revenue lost'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
-  bind(['cs'], cancel);
+  bind(['cp','cs','cm','cg'], cancel);
 }
-
 
 function showUploadConfirm(message){
   return new Promise(resolve=>{
@@ -1142,14 +1193,16 @@ const A = {
   next: () => { const p=S.pk; if (++p.vm>11){ p.vm=0; p.vy++; } },
   no: () => { S.pk.open=null; },
   ok: () => { const p=S.pk; if (!p.ds) return; S.rg[p.open]={s:p.ds,e:p.de||p.ds}; p.open=null; },
-  rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; },
+  rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; S.f.cg='book'; S.dd=null; },
   po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; },
+  dd: v => { const [kind,d,c]=v.split(':'); S.dd={kind,d:+d,c}; }, ddx: () => { S.dd=null; },
   us: async id => {
     const g = k => document.getElementById(k+'_'+id), u = {view_from:g('f').value||null, view_to:g('t').value||null};
     if (!g('r').disabled){ u.role=g('r').value; u.active=g('a').checked; }
     const {error} = await sb.from('profiles').update(u).eq('id',id); S.umsg = error ? error.message : 'Saved.';
   }
 };
+document.addEventListener('keydown', e => { if(e.key==='Escape' && S.dd){ S.dd=null; show(S.view); } });
 document.addEventListener('click', async e => { const b=e.target.closest('[data-a]'); if (!b) return; const [a,...v]=b.dataset.a.split(':'); if(!A[a]) return; await A[a](v.join(':')); show(S.view); });
 document.addEventListener('click', e => {
   if (!S.propMenuOpen || e.target.closest('.prop-filter')) return;
