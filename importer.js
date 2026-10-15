@@ -75,7 +75,10 @@
   function parseRes(rows, code) {
     const hi = find(rows, n => n.includes('reservationstatus') && n.includes('checkindate'));
     if (hi < 0) fail('the "Reservation Status / Check-In Date" header', rows);
-    const keys = rows[hi].map(norm), g = (r, k) => r[keys.indexOf(k)];
+    const keys = rows[hi].map(norm), g = (r, k) => { const i = keys.indexOf(k); return i < 0 ? undefined : r[i]; };
+    // Cloudbeds Reservations by Booking Date exports the guest under
+    // "Primary Guest Full Name". Support common header variants as well.
+    const guestKey = ['primaryguestfullname','primaryguestname','guestfullname','guestname','primaryguest'].find(k => keys.includes(k));
     const out = [];
     for (const r of rows.slice(hi + 1)) {
       const bd = iso(g(r, 'bookingdatetimeproperty'));
@@ -83,8 +86,9 @@
       const cin = iso(g(r, 'checkindate')), cout = iso(g(r, 'checkoutdate'));
       let nights = num(g(r, 'roomnights'));
       if (nights == null && cin && cout) nights = Math.round((new Date(cout) - new Date(cin)) / 864e5);
+      const guestName = guestKey ? String(g(r, guestKey) ?? '').trim() : '';
       out.push({ property: code, reservation_no: g(r, 'reservationnumber') || null, booking_date: bd, status: g(r, 'reservationstatus'),
-        room_type: g(r, 'roomtypes'), source: srcName(g(r, 'reservationsource')), source_category: g(r, 'reservationsourcecategory'),
+        guest_name: guestName, room_type: g(r, 'roomtypes'), source: srcName(g(r, 'reservationsource')), source_category: g(r, 'reservationsourcecategory'),
         check_in: cin, check_out: cout, room_nights: nights, guests: num(g(r, 'guestcount')),
         suggested_deposit: num(g(r, 'suggesteddeposit')), grand_total: num(g(r, 'grandtotal')), room_revenue: num(g(r, 'roomrevenuetotal')),
         taxes: num(g(r, 'totalreservationtaxes')), paid: num(g(r, 'reservationpaidamount')), balance_due: num(g(r, 'reservationbalancedue')) });
