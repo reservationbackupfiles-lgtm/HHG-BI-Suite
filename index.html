@@ -348,98 +348,6 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
   }
 }
 
-/* Responsive KPI cards with clean line icons */
-.c {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 26px;
-  column-gap: 10px;
-  align-items: center;
-  padding: 14px 16px;
-  min-width: 0;
-  container-type: inline-size;
-}
-
-.kpi-content {
-  grid-column: 1;
-  min-width: 0;
-}
-
-.kpi-content small,
-.kpi-content b,
-.kpi-content i {
-  display: block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.kpi-content small {
-  color: var(--mut);
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.kpi-content b {
-  font-size: clamp(16px, 8cqi, 24px);
-  font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.kpi-content i {
-  font-style: normal;
-  color: var(--mut);
-  font-size: clamp(10px, 4.2cqi, 12.5px);
-  line-height: 1.65;
-}
-
-.kpi-icon {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  justify-self: center;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--sea);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-}
-
-.kpi-icon svg {
-  display: block;
-  width: 24px;
-  height: 24px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-@media (max-width: 760px) {
-  .c {
-    padding: 12px;
-    column-gap: 6px;
-    grid-template-columns: minmax(0, 1fr) 22px;
-  }
-
-  .kpi-icon {
-    width: 22px;
-    height: 22px;
-  }
-
-  .kpi-icon svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-  
 </style>
 </head>
 <body>
@@ -853,33 +761,11 @@ function agg(y, months, cs){
   return {sold, rev, avail, occ:avail?sold/avail:NaN, adr:sold?rev/sold:NaN, revpar:avail?rev/avail:NaN};
 }
 const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.year==y && cs.includes(r.property) && (+r.rooms_sold||+r.room_revenue)).map(r=>r.month))];
-
 function kc(t,a,b,f,pts){
-  const d=a-b, g=b?d/b:NaN,
-    c=isNaN(d)?'':d>=0?'up':'dn',
-    ar=d>=0?'▲':'▼';
-
-  const dt = isNaN(d) ? '' :
-    `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
-
-  const icons = {
-    'Room revenue': '<circle cx="12" cy="12" r="9"/><path d="M12 7v10m4-7H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/>',
-    'Occupancy': '<path d="M3 18v-7a2 2 0 0 1 2-2h5a3 3 0 0 1 3 3v6M3 14h10m0-3h5a3 3 0 0 1 3 3v4M5 9V6h4a2 2 0 0 1 2 2v1"/>',
-    'ADR': '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9h.01M18 15h.01"/>',
-    'RevPAR': '<path d="M4 20V10m6 10V4m6 16v-7m6 7H2"/>',
-    'Rooms sold': '<path d="M4 21V3h13v18M17 12h3v9M8 7h5m-5 4h5m-5 4h2"/>'
-  };
-
-  const icon = icons[t] || '';
-  return `<div class="c">
-    <small>${t}</small>
-    <b>${f(a)}</b>
-    <i>Last year ${f(b)}</i>
-    <i class="${c}">${dt}</i>
-    <span class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg></span>
-  </div>`;
+  const d=a-b, g=b?d/b:NaN, c=isNaN(d)?'':d>=0?'up':'dn', ar=d>=0?'▲':'▼';
+  const dt = isNaN(d) ? '' : `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
+  return `<div class="c"><small>${t}</small><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
 }
-
 function mk(id, type, labels, sets, fm, horiz){
   charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
     options:{indexAxis:horiz?'y':'x', maintainAspectRatio:false, interaction:{mode:'index',axis:horiz?'y':'x',intersect:false},
