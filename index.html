@@ -348,35 +348,96 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
   }
 }
 
-/* KPI icons */
+/* Responsive KPI cards with clean line icons */
 .c {
   position: relative;
-  padding-right: 62px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  column-gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.kpi-content {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.kpi-content small,
+.kpi-content b,
+.kpi-content i {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.kpi-content small {
+  color: var(--mut);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.kpi-content b {
+  font-size: clamp(16px, 8cqi, 24px);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kpi-content i {
+  font-style: normal;
+  color: var(--mut);
+  font-size: clamp(10px, 4.2cqi, 12.5px);
+  line-height: 1.65;
 }
 
 .kpi-icon {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #E3F2F3;
-  color: #0E7C86;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: center;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--sea);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .kpi-icon svg {
-  width: 22px;
-  height: 22px;
+  display: block;
+  width: 24px;
+  height: 24px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.8;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+@media (max-width: 760px) {
+  .c {
+    padding: 12px;
+    column-gap: 6px;
+    grid-template-columns: minmax(0, 1fr) 22px;
+  }
+
+  .kpi-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .kpi-icon svg {
+    width: 20px;
+    height: 20px;
+  }
 }
   
 </style>
