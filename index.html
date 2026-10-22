@@ -716,17 +716,7 @@ async function load(){
       fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots'),
       fetchAll('adr_history').catch(e => { console.warn('ADR history unavailable; using existing Pace snapshots.', e); return []; })
     ]);
-    const codeByName = {
-  'H Hotel': 'HHO',
-  'S Resort': 'HSR',
-  'Piece Lio': 'HPCL',
-  'Nacpan Beach Resort': 'HNBR',
-  'Nacpan Beach Glamping': 'HNBG',
-  'Nacpan Beach Villas': 'HNBV',
-  'Z Garden Hotel': 'HZG',
-  'J Boutique Hotel': 'HJH',
-  'Villa V': 'HVV'
-};
+    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
     S.pm = Object.fromEntries(S.props.map(p=>[p.code,p]));
     const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
@@ -864,51 +854,30 @@ function agg(y, months, cs){
 }
 const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.year==y && cs.includes(r.property) && (+r.rooms_sold||+r.room_revenue)).map(r=>r.month))];
 
-function kc(t, a, b, f, pts) {
-  const d = a - b;
-  const g = b ? d / b : NaN;
-  const c = isNaN(d) ? '' : d >= 0 ? 'up' : 'dn';
-  const ar = d >= 0 ? '▲' : '▼';
+function kc(t,a,b,f,pts){
+  const d=a-b, g=b?d/b:NaN,
+    c=isNaN(d)?'':d>=0?'up':'dn',
+    ar=d>=0?'▲':'▼';
 
-  const dt = isNaN(d)
-    ? ''
-    : `${ar} ${pts
-        ? (Math.abs(d) * 100).toFixed(1) + ' pts'
-        : f(Math.abs(d))}${isNaN(g)
-        ? ''
-        : ' · ' + (Math.abs(g) * 100).toFixed(1) + '%'}`;
+  const dt = isNaN(d) ? '' :
+    `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
 
   const icons = {
-    'Room revenue':
-      '<circle cx="12" cy="12" r="9"/><path d="M12 7v10m4-7H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/>',
-
-    'Occupancy':
-      '<path d="M3 18v-7a2 2 0 0 1 2-2h5a3 3 0 0 1 3 3v6M3 14h10m0-3h5a3 3 0 0 1 3 3v4M5 9V6h4a2 2 0 0 1 2 2v1"/>',
-
-    'ADR':
-      '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/>',
-
-    'RevPAR':
-      '<path d="M4 20V10m6 10V4m6 16v-7m6 7H2"/>',
-
-    'Rooms sold':
-      '<path d="M4 21V3h13v18M17 12h3v9M8 7h5m-5 4h5m-5 4h2"/>'
+    'Room revenue': '<circle cx="12" cy="12" r="9"/><path d="M12 7v10m4-7H10a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/>',
+    'Occupancy': '<path d="M3 18v-7a2 2 0 0 1 2-2h5a3 3 0 0 1 3 3v6M3 14h10m0-3h5a3 3 0 0 1 3 3v4M5 9V6h4a2 2 0 0 1 2 2v1"/>',
+    'ADR': '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9h.01M18 15h.01"/>',
+    'RevPAR': '<path d="M4 20V10m6 10V4m6 16v-7m6 7H2"/>',
+    'Rooms sold': '<path d="M4 21V3h13v18M17 12h3v9M8 7h5m-5 4h5m-5 4h2"/>'
   };
 
   const icon = icons[t] || '';
-
-  return `
-    <div class="c">
-      <div class="kpi-content">
-        <small>${t}</small>
-        <b>${f(a)}</b>
-        <i>Last year ${f(b)}</i>
-        <i class="${c}">${dt}</i>
-      </div>
-      <span class="kpi-icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>
-      </span>
-    </div>`;
+  return `<div class="c">
+    <small>${t}</small>
+    <b>${f(a)}</b>
+    <i>Last year ${f(b)}</i>
+    <i class="${c}">${dt}</i>
+    <span class="kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg></span>
+  </div>`;
 }
 
 function mk(id, type, labels, sets, fm, horiz){
