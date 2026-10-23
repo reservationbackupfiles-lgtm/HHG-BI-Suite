@@ -836,21 +836,22 @@ function bindDailyPickup(){
       datasets.push({type:'bar',label:'Bookings',data:countBooked,backgroundColor:'#0E7C86',borderRadius:3});
       datasets.push({type:'bar',label:'Cancellations',data:countCancelled,backgroundColor:'#B03A2E',borderRadius:3});
     }else{
-      const rows=mode==='By Hotel'?S.props.filter(p=>cs.includes(p.code)).map(p=>({key:p.code,label:p.name})): [...new Set([...reservations.map(r=>r.source||'Unknown'),...cancellations.map(r=>r.source||'Unknown')])].map(x=>({key:x,label:x}));
-      rows.forEach((row,i)=>{
-        const rb=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d&&(mode==='By Hotel'?r.property===row.key:(r.source||'Unknown')===row.key)).reduce((a,r)=>a+valueBooked(r),0));
-        const rc=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d&&(mode==='By Hotel'?r.property===row.key:(r.source||'Unknown')===row.key)).reduce((a,r)=>a+valueCancelled(r),0));
-        const palette=['#0E7C86','#F2B134','#2563EB','#8B5CF6','#10B981','#64748B','#F97316','#DB2777','#0F766E'];
-        datasets.push({type:'line',label:row.label,data:rb,borderColor:palette[i%palette.length],backgroundColor:palette[i%palette.length],pointRadius:1,tension:.2});
-        datasets.push({type:'line',label:row.label+' · Cancelled',data:rc,borderColor:'#B03A2E',backgroundColor:'#B03A2E',borderDash:[4,4],pointRadius:0,tension:.2,hidden:mode==='By Hotel'&&rows.length>5});
-      });
+      const byHotel=mode==='By Hotel';
+      const rows=byHotel
+        ? S.props.filter(p=>cs.includes(p.code)).map(p=>({key:p.code,label:p.name}))
+        : [...new Set([...reservations.map(r=>r.source||r.source_category||'Unknown'),...cancellations.map(r=>r.source||r.source_category||'Unknown')])].map(x=>({key:x,label:x}));
+      const bookedByRow=rows.map(row=>reservations.filter(r=>byHotel?r.property===row.key:(r.source||r.source_category||'Unknown')===row.key).reduce((a,r)=>a+valueBooked(r),0));
+      const cancelledByRow=rows.map(row=>cancellations.filter(r=>byHotel?r.property===row.key:(r.source||r.source_category||'Unknown')===row.key).reduce((a,r)=>a+valueCancelled(r),0));
+      labels.splice(0,labels.length,...rows.map(r=>r.label));
+      datasets.push({type:'bar',label:'Booked Revenue',data:bookedByRow,backgroundColor:'#0E7C86',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancelled Revenue',data:cancelledByRow,backgroundColor:'#B03A2E',borderRadius:3});
     }
     const canvas=$('#dailyPickupChart'); if(!canvas)return;
     const existing=charts.find(c=>c.canvas===canvas); if(existing){existing.destroy();charts=charts.filter(c=>c!==existing)}
     const chart=new Chart(canvas,{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${mode==='Total'?fmt(c.parsed.y):php(c.parsed.y)}`}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>mode==='Total'?fmt(v):v>=1e6?(v/1e6).toFixed(1)+'M':fmt(v)}}}}});
     charts.push(chart);
     const totalEl=$('#dailyPickupSummary');
-    if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><b>Net: ${php(totalBooked-totalCancelled)}</b>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
+    if(totalEl) totalEl.innerHTML=mode==='Revenue'||mode==='By Hotel'||mode==='By Source'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><b>Net: ${php(totalBooked-totalCancelled)}</b>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
     const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length?'Booked revenue is grouped by booking date; cancelled revenue is grouped by cancellation date. Net is a daily activity comparison, not a matched reservation cohort.':'No cancellation records were loaded. Check Supabase permissions for the cancellations table; booked revenue is grouped by booking date.';
   };
   document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;render()});
