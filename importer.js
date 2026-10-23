@@ -269,13 +269,15 @@
     return { rows: out, note: `${out.length} cancellation records` };
   }
 
-  function detect(rows) {
-    if (find(rows, n => n.includes('date') && n.some(k => /^adr\d{4}$/.test(k))) >= 0) return 'ADR';
-    if (find(rows, n => n.includes('reservationstatus') && n.includes('checkindate')) >= 0) return 'Reservations';
-    if (find(rows, n => n.includes('thisyear') && n.includes('lastyear')) >= 0) return 'Pace';
-    if (cancellationHeaderIndex(rows) >= 0) return 'Cancellations';
-    return null;
-  }
+  
+function detect(rows) {
+  if (cancellationHeaderIndex(rows) >= 0) return 'Cancellations';
+  if (find(rows, n => n.includes('date') && n.some(k => /^adr\d{4}$/.test(k))) >= 0) return 'ADR';
+  if (find(rows, n => n.includes('reservationstatus') && n.includes('checkindate')) >= 0) return 'Reservations';
+  if (find(rows, n => n.includes('thisyear') && n.includes('lastyear')) >= 0) return 'Pace';
+  return null;
+}
+
 
   function generatedAt(rows) {
     for (const r of rows.slice(0, 8)) {
