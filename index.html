@@ -1092,12 +1092,36 @@ const readRows = async f => { const wb = XLSX.read(await f.arrayBuffer(),{type:'
 const chunked = async (fn,rows) => { for (let i=0;i<rows.length;i+=500){ const {error}=await fn(rows.slice(i,i+500)); if (error) throw error; } };
 const logUp = o => sb.from('upload_log').insert({user_email:S.user.email,...o});
 async function showSelectedFiles(){
-  const box=$('#fl'); if(!box)return;
-  const files=[...$('#fAll').files];
-  if(!files.length){box.textContent='No files selected.';return;}
-  box.innerHTML=(await Promise.all(files.map(async f=>{
-    try{const rows=await readRows(f),rep=Imp.detect(rows);return `${f.name} → ${rep?`<b>${rep==='ADR'?'Average Daily Rate (ADR)':rep==='Reservations'?'Reservations by Booking Date':'Pace Report'}</b>`:'<span class="dn">Report type not recognized</span>'}`;}
-    catch(e){return `${f.name} → <span class="dn">Cannot read file: ${String(e.message||e)}</span>`;}
+  const box = $('#fl');
+  if (!box) return;
+
+  const files = [...$('#fAll').files];
+
+  if (!files.length) {
+    box.textContent = 'No files selected.';
+    return;
+  }
+
+  box.innerHTML = (await Promise.all(files.map(async f => {
+    try {
+      const rows = await readRows(f);
+      const rep = Imp.detect(rows);
+
+      const label = {
+        ADR: 'Average Daily Rate (ADR)',
+        Reservations: 'Reservations by Booking Date',
+        Cancellations: 'Cancellations Report',
+        Pace: 'Pace Report'
+      }[rep];
+
+      return `${f.name} → ${
+        label
+          ? `<b>${label}</b>`
+          : '<span class="dn">Report type not recognized</span>'
+      }`;
+    } catch (e) {
+      return `${f.name} → <span class="dn">Cannot read file: ${String(e.message || e)}</span>`;
+    }
   }))).join('<br>');
 }
 async function doUpload(){
@@ -1120,7 +1144,7 @@ async function doUpload(){
       if(logError)L(`Log warning: ${logError.message}`);
     }
   }
-  const order={ADR:0,Reservations:1,Pace:2};
+  const order={ADR:0,Reservations:1,Pace:2,Cancellations:3};
   jobs.sort((a,b)=>order[a.rep]-order[b.rep]||(a.generated<b.generated?-1:a.generated>b.generated?1:0));
   for(const {rep,rows,file} of jobs){
     try{
@@ -1153,13 +1177,28 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
         if(!mapped.length)throw new Error('No rows with reservation numbers were found; no existing data was changed.');
         await chunked(c=>sb.from('reservations').upsert(c,{onConflict:'property_id,reservation_no'}),mapped);
         n=mapped.length;note=r.note+` (upserted; ${mapped.filter(x=>x.guest_name).length} with guest names; ${skipped} skipped: no reservation number; existing rows not deleted)`;
+      
       } else if(rep==='Pace'){
         const r=Imp.parsePace(rows,prop.code,$('#snap').value||null);snap=r.snap;
         const mapped=r.rows.map(x=>({property_id:propertyId,snapshot_date:snap,stay_date:`${(+snap.slice(5,7)>x.month_no?+snap.slice(0,4)+1:+snap.slice(0,4))}-${pad(x.month_no)}-${pad(x.day)}`,room_nights:x.ty_rooms_sold||0}));
         if(!mapped.length)throw new Error('No Pace rows found.');
         await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);
         n=mapped.length;note=`snapshot ${snap}`;
+      } else if(rep==='Cancellations'){
+        const r=Imp.parseCancellations(rows,prop.code);
+        const mapped=r.rows.map(x=>({
+          ...x,
+          property_id:propertyId
+        }));
+        if(!mapped.length)throw new Error('No cancellation rows found.');
+        await chunked(
+          c=>sb.from('cancellations').upsert(c,{onConflict:'property_id,reservation_no'}),
+          mapped
+        );
+        n=mapped.length;
+        note=`Cancellation report imported for ${prop.code}`;
       }
+
       L(`${file.name} → ${rep}: ${n} rows saved (${note}).`);
       const {error:logError}=await logUp({property_id:propertyId,report:rep,rows:n,result:'ok',message:note});
       if(logError)L(`Log warning: ${logError.message}`);
