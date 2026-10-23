@@ -826,11 +826,12 @@ function bindDailyPickup(){
     const countCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).length);
     const revBooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d).reduce((a,r)=>a+valueBooked(r),0));
     const revCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).reduce((a,r)=>a+valueCancelled(r),0));
-    // Rebooked revenue is shown only when the source data contains an explicit rebooking value.
-    const valueRebooked=r=>+(r.rebooked_revenue??r.rebooked_room_revenue??r.rebooked_amount??r.rebooked_revenue_total??0)||0;
-    const revRebooked=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).reduce((a,r)=>a+valueRebooked(r),0));
-    const revNet=dates.map((d,i)=>revBooked[i]-revCancelled[i]+revRebooked[i]);
-    const totalBooked=reservations.reduce((a,r)=>a+valueBooked(r),0), totalCancelled=cancellations.reduce((a,r)=>a+valueCancelled(r),0), totalRebooked=cancellations.reduce((a,r)=>a+valueRebooked(r),0), totalNet=totalBooked-totalCancelled+totalRebooked;
+    // Rebooked revenue: detect rebooking-related reservation statuses in Reservations by Booking Date.
+    // Rebooked bookings are already included in Total Booked Revenue, so do NOT add them twice to Net.
+    const isRebooked=r=>/rebook|re-book|rebooking/i.test(String(r.status||''));
+    const revRebooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d&&isRebooked(r)).reduce((a,r)=>a+valueBooked(r),0));
+    const revNet=dates.map((d,i)=>revBooked[i]-revCancelled[i]);
+    const totalBooked=reservations.reduce((a,r)=>a+valueBooked(r),0), totalCancelled=cancellations.reduce((a,r)=>a+valueCancelled(r),0), totalRebooked=reservations.filter(isRebooked).reduce((a,r)=>a+valueBooked(r),0), totalNet=totalBooked-totalCancelled;
     const labels=dates.map(d=>{const x=new Date(d+'T00:00:00Z');return `${x.getUTCMonth()+1}/${x.getUTCDate()}`});
     const datasets=[];
     if(mode==='Revenue'){
@@ -858,7 +859,7 @@ function bindDailyPickup(){
     charts.push(chart);
     const totalEl=$('#dailyPickupSummary');
     if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><span style="color:#F59E0B">Rebooked: ${php(totalRebooked)}</span><strong>Net: ${php(totalNet)}</strong>`:mode==='By Hotel'||mode==='By Source'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
-    const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length?'Total booked revenue includes all reservations, including those later cancelled, grouped by booking date. Cancelled revenue uses the original value of every cancelled reservation, grouped by cancellation date, to show potential sales lost.':'No cancellation records were loaded. Check Supabase permissions for the cancellations table. Total booked revenue includes all reservations, including those later cancelled.';
+    const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length?'Total booked revenue includes all reservations, including those later cancelled, grouped by booking date. Rebooked revenue is identified from reservation statuses containing 'rebook' and grouped by booking date; it is included in Total Booked Revenue and is not added again to Net. Cancelled revenue uses the original value of every cancelled reservation, grouped by cancellation date, to show potential sales lost.':'No cancellation records were loaded. Check Supabase permissions for the cancellations table. Total booked revenue includes all reservations, including those later cancelled.';
   };
   document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;render()});
   document.querySelectorAll('[data-pick-view]').forEach(b=>b.onclick=()=>{mode=b.dataset.pickView;render()});
