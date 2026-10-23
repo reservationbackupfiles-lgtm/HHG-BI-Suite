@@ -1026,7 +1026,7 @@ async function admin(){
   $('#view').innerHTML = `<div class="admin-grid"><section class="upload-card"><h3>Upload reports</h3>
     <div class="admin-select"><label for="upP">Property</label><select id="upP">${opts(propOptions,S.props[0]?.id)}</select></div>
     <p class="note">Select the report files for this property together. The system identifies each report from its contents, so filenames and selection order do not matter. Supports .xlsx, .xls, and .csv.</p>
-    <label class="upload-field" for="fAll"><span>Choose report files (up to 4)</span><input id="fAll" type="file" accept=".xlsx,.xls,.csv" multiple></label>
+    <label class="upload-field" for="fAll"><span>Choose report files (up to 5)</span><input id="fAll" type="file" accept=".xlsx,.xls,.csv" multiple></label>
     <div id="fl" class="note">No files selected.</div>
     <div class="admin-select"><label for="snap">Snapshot date</label><input id="snap" type="date" value="${today()}"><p class="note">Used for ADR history and as an override for Pace reports.</p></div>
     <button class="btn" id="up">Upload selected files</button></section>
