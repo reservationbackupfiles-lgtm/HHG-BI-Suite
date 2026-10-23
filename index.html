@@ -348,6 +348,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
   }
 }
 
+.pickup-card{margin-top:14px}.pickup-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.pickup-head h3{margin:0}.pickup-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pickup-tabs{display:flex;gap:2px;padding:3px;background:#F2F5F6;border:1px solid var(--line);border-radius:9px}.pickup-tabs button{border:0;background:transparent;color:var(--mut);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}.pickup-tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px #10242b18}.pickup-chart{height:290px;margin-top:10px}.pickup-summary{display:flex;gap:22px;flex-wrap:wrap;padding-top:10px;font-size:13px}.pickup-summary span,.pickup-summary b{font-weight:700}.pickup-card .note{margin-bottom:0}@media(max-width:700px){.pickup-chart{height:260px}.pickup-controls{width:100%}.pickup-tabs{max-width:100%;overflow:auto}.pickup-tabs button{padding:6px 8px}}
 </style>
 </head>
 <body>
@@ -420,7 +421,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -620,9 +621,10 @@ function sourceCategory(value){
 }
 async function load(){
   try{
-    const [rawProps, rawAdr, rawRes, rawPace, rawAdrHistory] = await Promise.all([
+    const [rawProps, rawAdr, rawRes, rawPace, rawAdrHistory, rawCancellations] = await Promise.all([
       fetchAll('properties'), fetchAll('adr_daily'), fetchAll('reservations'), fetchAll('pace_snapshots'),
-      fetchAll('adr_history').catch(e => { console.warn('ADR history unavailable; using existing Pace snapshots.', e); return []; })
+      fetchAll('adr_history').catch(e => { console.warn('ADR history unavailable; using existing Pace snapshots.', e); return []; }),
+      fetchAll('cancellations').catch(e => { console.warn('Cancellation data unavailable for Daily Pickup.', e); return []; })
     ]);
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -644,6 +646,15 @@ async function load(){
   status: r.status || '',
   source: r.source || ''
 })).filter(r => r.property);
+    S.cancellations = rawCancellations.map(r => ({
+      ...r,
+      property: codeById[String(r.property_id)],
+      cancellation_date: String(r.cancellation_date || '').slice(0,10),
+      booking_date: String(r.booking_date || '').slice(0,10),
+      source: r.source || '',
+      room_revenue_total: +(r.room_revenue_total ?? r.original_room_revenue_total ?? r.grand_total ?? r.original_grand_total ?? 0) || 0,
+      room_nights: +(r.room_nights || 0)
+    })).filter(r => r.property && r.cancellation_date);
     const adrPace = rawAdrHistory.map(r=>{
       const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
@@ -782,15 +793,69 @@ function dash(){
   const ty=agg(y,ms,cs), ly=agg(y-1,ms,cs), msA=monthsFor(y,f.month,all);
   const T = {occ:'Occupancy by property',rev:'Room revenue by property',adr:'ADR by property',rvp:'RevPAR by property'};
   $('#view').innerHTML = filterBar()+`<div class="cards">${kc('Room revenue',ty.rev,ly.rev,php)}${kc('Occupancy',ty.occ,ly.occ,pct,1)}${kc('ADR',ty.adr,ly.adr,php)}${kc('RevPAR',ty.revpar,ly.revpar,php)}${kc('Rooms sold',ty.sold,ly.sold,fmt)}</div>
+  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
   <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
   <div class="two">${Object.keys(T).map(k=>`<div class="p"><h3>${T[k]}</h3><div class="ch"><canvas id="c_${k}"></canvas></div></div>`).join('')}</div>
   <p class="note">Occupancy = rooms sold ÷ (rooms × days). Last year compares the same months that have data this year.</p>`;
   bind(['year','month'], dash);
+  bindDailyPickup();
   const mm = Array.from({length:12},(_,i)=>i+1);
   mk('#c0','bar',MN,[ds(y,mm.map(m=>agg(y,[m],cs).rev||null),C1),ds(y-1,mm.map(m=>agg(y-1,[m],cs).rev||null),C2)],mfmt);
   const ps = S.props.filter(p=>p.total_rooms>0&&selectedCodes().includes(p.code)), a = ps.map(p=>agg(y,msA,[p.code])), b = ps.map(p=>agg(y-1,msA,[p.code]));
   const spec = {occ:['occ',v=>(+v*100).toFixed(1)+'%'],rev:['rev',mfmt],adr:['adr',php],rvp:['revpar',php]};
   for (const k in spec){ const [m,fm]=spec[k]; mk('#c_'+k,'bar',ps.map(p=>p.name),[ds(y,a.map(x=>x[m]),C1),ds(y-1,b.map(x=>x[m]),C2)],fm,true); }
+}
+
+/* Daily Pickup: reservations by booking date and cancellations by cancellation date */
+function bindDailyPickup(){
+  let days=10, mode='Revenue';
+  const render=()=>{
+    document.querySelectorAll('[data-pick-days]').forEach(b=>b.classList.toggle('on',+b.dataset.pickDays===days));
+    document.querySelectorAll('[data-pick-view]').forEach(b=>b.classList.toggle('on',b.dataset.pickView===mode));
+    const end=new Date(today()+'T00:00:00Z');
+    const start=new Date(end); start.setUTCDate(start.getUTCDate()-(days-1));
+    const iso=d=>d.toISOString().slice(0,10);
+    const dates=Array.from({length:days},(_,i)=>{const d=new Date(start);d.setUTCDate(d.getUTCDate()+i);return iso(d)});
+    const cs=selectedCodes();
+    const reservations=S.res.filter(r=>cs.includes(r.property)&&r.booking_date&&dates.includes(String(r.booking_date).slice(0,10))&&String(r.status||'').toLowerCase()!=='cancelled');
+    const cancellations=S.cancellations.filter(r=>cs.includes(r.property)&&r.cancellation_date&&dates.includes(r.cancellation_date));
+    const valueBooked=r=>+(r.revenue??r.grand_total??0)||0;
+    const valueCancelled=r=>+(r.room_revenue_total??r.original_room_revenue_total??r.grand_total??r.original_grand_total??0)||0;
+    const countBooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d).length);
+    const countCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).length);
+    const revBooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d).reduce((a,r)=>a+valueBooked(r),0));
+    const revCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).reduce((a,r)=>a+valueCancelled(r),0));
+    const totalBooked=reservations.reduce((a,r)=>a+valueBooked(r),0), totalCancelled=cancellations.reduce((a,r)=>a+valueCancelled(r),0);
+    const labels=dates.map(d=>{const x=new Date(d+'T00:00:00Z');return `${x.getUTCMonth()+1}/${x.getUTCDate()}`});
+    const datasets=[];
+    if(mode==='Revenue'){
+      datasets.push({type:'bar',label:'Booked Revenue',data:revBooked,backgroundColor:'#0E7C86',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancelled Revenue',data:revCancelled,backgroundColor:'#B03A2E',borderRadius:3});
+      datasets.push({type:'line',label:'Net Revenue',data:revBooked.map((v,i)=>v-revCancelled[i]),borderColor:'#2563EB',backgroundColor:'#2563EB',pointRadius:2,tension:.25});
+    }else if(mode==='Total'){
+      datasets.push({type:'bar',label:'Bookings',data:countBooked,backgroundColor:'#0E7C86',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancellations',data:countCancelled,backgroundColor:'#B03A2E',borderRadius:3});
+    }else{
+      const rows=mode==='By Hotel'?S.props.filter(p=>cs.includes(p.code)).map(p=>({key:p.code,label:p.name})): [...new Set([...reservations.map(r=>r.source||'Unknown'),...cancellations.map(r=>r.source||'Unknown')])].map(x=>({key:x,label:x}));
+      rows.forEach((row,i)=>{
+        const rb=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d&&(mode==='By Hotel'?r.property===row.key:(r.source||'Unknown')===row.key)).reduce((a,r)=>a+valueBooked(r),0));
+        const rc=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d&&(mode==='By Hotel'?r.property===row.key:(r.source||'Unknown')===row.key)).reduce((a,r)=>a+valueCancelled(r),0));
+        const palette=['#0E7C86','#F2B134','#2563EB','#8B5CF6','#10B981','#64748B','#F97316','#DB2777','#0F766E'];
+        datasets.push({type:'line',label:row.label,data:rb,borderColor:palette[i%palette.length],backgroundColor:palette[i%palette.length],pointRadius:1,tension:.2});
+        datasets.push({type:'line',label:row.label+' · Cancelled',data:rc,borderColor:'#B03A2E',backgroundColor:'#B03A2E',borderDash:[4,4],pointRadius:0,tension:.2,hidden:mode==='By Hotel'&&rows.length>5});
+      });
+    }
+    const canvas=$('#dailyPickupChart'); if(!canvas)return;
+    const existing=charts.find(c=>c.canvas===canvas); if(existing){existing.destroy();charts=charts.filter(c=>c!==existing)}
+    const chart=new Chart(canvas,{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${mode==='Total'?fmt(c.parsed.y):php(c.parsed.y)}`}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>mode==='Total'?fmt(v):v>=1e6?(v/1e6).toFixed(1)+'M':fmt(v)}}}}});
+    charts.push(chart);
+    const totalEl=$('#dailyPickupSummary');
+    if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><b>Net: ${php(totalBooked-totalCancelled)}</b>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
+    const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length?'Booked revenue is grouped by booking date; cancelled revenue is grouped by cancellation date. Net is a daily activity comparison, not a matched reservation cohort.':'No cancellation records were loaded. Check Supabase permissions for the cancellations table; booked revenue is grouped by booking date.';
+  };
+  document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;render()});
+  document.querySelectorAll('[data-pick-view]').forEach(b=>b.onclick=()=>{mode=b.dataset.pickView;render()});
+  render();
 }
 
 /* Compare */
@@ -1186,10 +1251,10 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
         n=mapped.length;note=`snapshot ${snap}`;
       } else if(rep==='Cancellations'){
         const r=Imp.parseCancellations(rows,prop.code);
-        const mapped=r.rows.map(({property, ...x})=>({
-  ...x,
-  property_id:propertyId
-}));
+        const mapped=r.rows.map(x=>({
+          ...x,
+          property_id:propertyId
+        }));
         if(!mapped.length)throw new Error('No cancellation rows found.');
         await chunked(
           c=>sb.from('cancellations').upsert(c,{onConflict:'property_id,reservation_no'}),
