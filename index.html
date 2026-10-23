@@ -793,7 +793,7 @@ function dash(){
   const ty=agg(y,ms,cs), ly=agg(y-1,ms,cs), msA=monthsFor(y,f.month,all);
   const T = {occ:'Occupancy by property',rev:'Room revenue by property',adr:'ADR by property',rvp:'RevPAR by property'};
   $('#view').innerHTML = filterBar()+`<div class="cards">${kc('Room revenue',ty.rev,ly.rev,php)}${kc('Occupancy',ty.occ,ly.occ,pct,1)}${kc('ADR',ty.adr,ly.adr,php)}${kc('RevPAR',ty.revpar,ly.revpar,php)}${kc('Rooms sold',ty.sold,ly.sold,fmt)}</div>
-  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
+  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button><button type="button" data-pick-year="2025">2025</button><button type="button" data-pick-year="2026">2026</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
   <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
   <div class="two">${Object.keys(T).map(k=>`<div class="p"><h3>${T[k]}</h3><div class="ch"><canvas id="c_${k}"></canvas></div></div>`).join('')}</div>
   <p class="note">Occupancy = rooms sold ÷ (rooms × days). Last year compares the same months that have data this year.</p>`;
@@ -808,31 +808,34 @@ function dash(){
 
 /* Daily Pickup: reservations by booking date and cancellations by cancellation date */
 function bindDailyPickup(){
-  let days=10, mode='Revenue';
+  let days=10, year=null, mode='Revenue';
   const render=()=>{
-    document.querySelectorAll('[data-pick-days]').forEach(b=>b.classList.toggle('on',+b.dataset.pickDays===days));
+    document.querySelectorAll('[data-pick-days]').forEach(b=>b.classList.toggle('on',year===null && +b.dataset.pickDays===days));
+    document.querySelectorAll('[data-pick-year]').forEach(b=>b.classList.toggle('on',year!==null && +b.dataset.pickYear===year));
     document.querySelectorAll('[data-pick-view]').forEach(b=>b.classList.toggle('on',b.dataset.pickView===mode));
     const end=new Date(today()+'T00:00:00Z');
     const start=new Date(end); start.setUTCDate(start.getUTCDate()-(days-1));
     const iso=d=>d.toISOString().slice(0,10);
-    const dates=Array.from({length:days},(_,i)=>{const d=new Date(start);d.setUTCDate(d.getUTCDate()+i);return iso(d)});
+    const monthly=year!==null;
+    const dates=monthly?Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,'0')}`):Array.from({length:days},(_,i)=>{const d=new Date(start);d.setUTCDate(d.getUTCDate()+i);return iso(d)});
+    const dateKey=(value)=>String(value||'').slice(0,monthly?7:10);
     const cs=selectedCodes();
-    const reservations=S.res.filter(r=>cs.includes(r.property)&&r.booking_date&&dates.includes(String(r.booking_date).slice(0,10))); // Include ALL reservations, including those later cancelled, for original potential sales
-    const cancellations=S.cancellations.filter(r=>cs.includes(r.property)&&r.cancellation_date&&dates.includes(r.cancellation_date));
+    const reservations=S.res.filter(r=>cs.includes(r.property)&&r.booking_date&&dates.includes(dateKey(r.booking_date))); // Includes bookings later cancelled
+    const cancellations=S.cancellations.filter(r=>cs.includes(r.property)&&r.cancellation_date&&dates.includes(dateKey(r.cancellation_date)));
     const valueBooked=r=>+(r.revenue??r.grand_total??0)||0;
     // Cancellation loss must use the original value of the cancelled booking, not any amount collected/refunded.
     const valueCancelled=r=>+(r.original_room_revenue_total??r.original_grand_total??r.room_revenue_total??r.grand_total??0)||0;
-    const countBooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d).length);
-    const countCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).length);
-    const revBooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d).reduce((a,r)=>a+valueBooked(r),0));
-    const revCancelled=dates.map(d=>cancellations.filter(r=>r.cancellation_date===d).reduce((a,r)=>a+valueCancelled(r),0));
-    // Rebooked revenue: detect rebooking-related reservation statuses in Reservations by Booking Date.
-    // Rebooked bookings are already included in Total Booked Revenue, so do NOT add them twice to Net.
-    const isRebooked=r=>/rebook|re-book|rebooking/i.test(String(r.status||''));
-    const revRebooked=dates.map(d=>reservations.filter(r=>String(r.booking_date).slice(0,10)===d&&isRebooked(r)).reduce((a,r)=>a+valueBooked(r),0));
+    const countBooked=dates.map(d=>reservations.filter(r=>dateKey(r.booking_date)===d).length);
+    const countCancelled=dates.map(d=>cancellations.filter(r=>dateKey(r.cancellation_date)===d).length);
+    const revBooked=dates.map(d=>reservations.filter(r=>dateKey(r.booking_date)===d).reduce((a,r)=>a+valueBooked(r),0));
+    const revCancelled=dates.map(d=>cancellations.filter(r=>dateKey(r.cancellation_date)===d).reduce((a,r)=>a+valueCancelled(r),0));
+    // Rebooking is identified from Reservation Source (not Reservation Status).
+    // Rebooked revenue is already included in total booked revenue and is not added twice to Net.
+    const isRebooked=r=>/rebook|re-book|rebooking/i.test(String(r.source||'')+' '+String(r.source_category||''));
+    const revRebooked=dates.map(d=>reservations.filter(r=>dateKey(r.booking_date)===d&&isRebooked(r)).reduce((a,r)=>a+valueBooked(r),0));
     const revNet=dates.map((d,i)=>revBooked[i]-revCancelled[i]);
     const totalBooked=reservations.reduce((a,r)=>a+valueBooked(r),0), totalCancelled=cancellations.reduce((a,r)=>a+valueCancelled(r),0), totalRebooked=reservations.filter(isRebooked).reduce((a,r)=>a+valueBooked(r),0), totalNet=totalBooked-totalCancelled;
-    const labels=dates.map(d=>{const x=new Date(d+'T00:00:00Z');return `${x.getUTCMonth()+1}/${x.getUTCDate()}`});
+    const labels=dates.map(d=>{const x=new Date((monthly?d+'-01':d)+'T00:00:00Z');return monthly?x.toLocaleString('en-US',{month:'short',timeZone:'UTC'}):`${x.getUTCMonth()+1}/${x.getUTCDate()}`});
     const datasets=[];
     if(mode==='Revenue'){
       datasets.push({type:'bar',label:'Total Booked Revenue (incl. cancelled)',data:revBooked,backgroundColor:'#0E7C86',borderRadius:3});
@@ -859,9 +862,10 @@ function bindDailyPickup(){
     charts.push(chart);
     const totalEl=$('#dailyPickupSummary');
     if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><span style="color:#F59E0B">Rebooked: ${php(totalRebooked)}</span><strong>Net: ${php(totalNet)}</strong>`:mode==='By Hotel'||mode==='By Source'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
-    const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length ? `Total booked revenue includes all reservations, including those later cancelled, grouped by booking date. Rebooked revenue is identified from reservation statuses containing 'rebook' and grouped by booking date; it is included in Total Booked Revenue and is not added again to Net. Cancelled revenue uses the original value of every cancelled reservation, grouped by cancellation date, to show potential sales lost.` : 'No cancellation records were loaded. Check Supabase permissions for the cancellations table. Total booked revenue includes all reservations, including those later cancelled.';
+    const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length ? `Total booked revenue includes all reservations, including those later cancelled, grouped by booking date. Rebooked revenue is identified from Reservation Source or Reservation Source Category containing 'rebook' and grouped by booking date; it is included in Total Booked Revenue and is not added again to Net. Cancelled revenue uses the original value of every cancelled reservation, grouped by cancellation date, to show potential sales lost.` : 'No cancellation records were loaded. Check Supabase permissions for the cancellations table. Total booked revenue includes all reservations, including those later cancelled.';
   };
-  document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;render()});
+  document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;year=null;render()});
+  document.querySelectorAll('[data-pick-year]').forEach(b=>b.onclick=()=>{year=+b.dataset.pickYear;render()});
   document.querySelectorAll('[data-pick-view]').forEach(b=>b.onclick=()=>{mode=b.dataset.pickView;render()});
   render();
 }
