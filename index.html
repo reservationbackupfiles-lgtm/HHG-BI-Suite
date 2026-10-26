@@ -1262,7 +1262,7 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
         await chunked(c=>sb.from('pace_snapshots').upsert(c,{onConflict:'property_id,stay_date,snapshot_date'}),mapped);
         n=mapped.length;note=`snapshot ${snap}`;
       } else if(rep==='Cancellations'){
-        const r=Imp.parseCancellations(rows,prop.code);
+        const r=Imp.parseCancellations(rows,propertyId);
         const mapped=r.rows.map(x=>({
           ...x,
           property_id:propertyId
