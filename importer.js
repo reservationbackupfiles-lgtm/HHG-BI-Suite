@@ -182,7 +182,7 @@
     );
   }
 
-  function parseCancellations(rows, code) {
+  function parseCancellations(rows, propertyId) {
     const headerIndex = cancellationHeaderIndex(rows);
     if (headerIndex < 0) {
       fail('the "Reservation Number / Cancellation Date Time - Property" cancellation header');
@@ -233,8 +233,8 @@
       const reservationNo = textValue(get(row, 'Reservation Number'));
       if (!reservationNo) continue;
 
-      out.push({
-        property: code,
+     out.push({
+        property_id: propertyId,
         reservation_no: reservationNo,
         source_category: textValue(get(row, 'Reservation Source Category')),
         source: srcName(textValue(get(row, 'Reservation Source'))),
