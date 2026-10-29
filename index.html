@@ -1005,7 +1005,7 @@ function res(){
   <p class="note" style="margin:-6px 0 16px">Showing ${fmt(rs.length)} reservations: ${parts.join(' · ')}. Every number on this page follows these filters.</p>
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
-  <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div><div class="c"><small>Value lost</small><b class="dn">${php(T.lost)}</b><i>from cancelled bookings</i></div></div>
+  <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div></div>
   ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
