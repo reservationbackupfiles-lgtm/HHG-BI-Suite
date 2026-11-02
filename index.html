@@ -687,6 +687,31 @@ async function load(){
     snapshotPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
     adrPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
     S.pace = [...paceByKey.values()];
+
+    // Preserve actual ADR stay dates for the daily Pace view.
+    // S.pace remains the monthly snapshot dataset used by Reports.
+    const dailyByKey = new Map();
+    rawPace.forEach(r=>{
+      const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)];
+      if(!property||!stay||!snap) return;
+      dailyByKey.set([property,snap,stay].join('|'),{
+        property,snapshot_date:snap,stay_date:stay,
+        year_no:+stay.slice(0,4),month_no:+stay.slice(5,7),stay_day:+stay.slice(8,10),
+        ty_rooms_sold:+r.room_nights||0
+      });
+    });
+    rawAdrHistory.forEach(r=>{
+      const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)];
+      if(!property||!stay||!snap) return;
+      dailyByKey.set([property,snap,stay].join('|'),{
+        property,snapshot_date:snap,stay_date:stay,
+        year_no:+stay.slice(0,4),month_no:+stay.slice(5,7),stay_day:+stay.slice(8,10),
+        ty_rooms_sold:+r.rooms_sold||0
+      });
+    });
+    S.paceDaily = [...dailyByKey.values()];
     return true;
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
@@ -986,39 +1011,90 @@ function compare(){
 /* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
-  const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
-  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
-  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
-  const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
-  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
-  const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
-  const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
-  const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
-  const TA = cs.reduce((s,p)=>s+cap(p.code),0);
-  const cell = (i,v,a) => i+1>ld ? '<td></td>' : v==null ? '<td class="no"><small>no upload</small></td>' : `<td${i+1===ld?' class="now"':''}><b>${fmt(v)}</b><small>${pct(a?v/a:NaN)}</small></td>`;
-  const add = (arr,i) => {
-    if (i+1>ld) return '<td></td>'; const v=arr[i]; if (v==null) return '<td class="no"></td>';
-    let p=null; for (let j=i-1;j>=0;j--) if (arr[j]!=null){ p=arr[j]; break; }
-    if (p==null) return '<td><span class="mu">–</span></td>';
-    const d=v-p, c=d>0?'up':d<0?'dn':'mu', sg=d>0?'+':d<0?'−':'';
-    return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
+  const baseDate = S.paceDaily?.length
+    ? new Date((S.paceDaily.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''))+'T00:00:00')
+    : new Date();
+  const baseYear=baseDate.getFullYear(), baseMonth=baseDate.getMonth();
+  const target=new Date(baseYear,baseMonth+S.po,1);
+  const ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(ty,mo);
+  const tabs=[0,1,2,3,4].map(o=>{
+    const dt=new Date(baseYear,baseMonth+o,1);
+    const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';
+    return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;
+  }).join('');
+  const prevDate=new Date(baseYear,baseMonth-1,1);
+  const lastTab=`<button class="tab${S.po===-1?' on':''}" data-a="po:-1">Last month · ${MN[prevDate.getMonth()]}</button>`;
+  const bar=`<div class="bar">${sharedPropertyFilter()}${lastTab}${tabs}</div>`;
+  if(!S.paceDaily?.length){
+    $('#view').innerHTML=bar+`<div class="p"><h3>No daily Pace history yet</h3><p class="note">Upload ADR reports to retain daily stay-date room counts and upload snapshots.</p></div>`;
+    return;
+  }
+
+  const monthRows=S.paceDaily.filter(r=>r.year_no===ty&&r.month_no===mo&&selectedCodes().includes(r.property));
+  const snapshots=[...new Set(monthRows.map(r=>r.snapshot_date))].sort();
+  if(!snapshots.length){
+    $('#view').innerHTML=bar+`<div class="p"><h3>No Pace records for ${MN[mo-1]} ${ty}</h3><p class="note">No ADR stay-date records were found for this selected month. Choose another period or check the uploaded ADR history.</p></div>`;
+    return;
+  }
+
+  const latest=snapshots[snapshots.length-1], previous=snapshots.length>1?snapshots[snapshots.length-2]:null;
+  const dailyMap=new Map(monthRows.map(r=>[`${r.property}|${r.snapshot_date}|${r.stay_date}`,+r.ty_rooms_sold||0]));
+  const props=S.props.filter(p=>selectedCodes().includes(p.code)&&monthRows.some(r=>r.property===p.code));
+  const days=Array.from({length:nd},(_,i)=>i+1);
+  const capDay=props.reduce((sum,p)=>sum+(+p.total_rooms||0),0);
+  const capMonth=capDay*nd;
+  const values={};
+  props.forEach(p=>{
+    values[p.code]=days.map(d=>{
+      const date=`${ty}-${pad(mo)}-${pad(d)}`, key=`${p.code}|${latest}|${date}`;
+      return dailyMap.has(key)?dailyMap.get(key):null;
+    });
+  });
+  const total=days.map((d,i)=>{
+    const vals=props.map(p=>values[p.code][i]).filter(v=>v!=null);
+    return vals.length?vals.reduce((a,b)=>a+b,0):null;
+  });
+  const previousValues={};
+  props.forEach(p=>{
+    previousValues[p.code]=days.map(d=>{
+      const date=`${ty}-${pad(mo)}-${pad(d)}`, key=`${p.code}|${previous}|${date}`;
+      return previous&&dailyMap.has(key)?dailyMap.get(key):null;
+    });
+  });
+  const previousTotal=days.map((d,i)=>{
+    const vals=props.map(p=>previousValues[p.code][i]).filter(v=>v!=null);
+    return vals.length?vals.reduce((a,b)=>a+b,0):null;
+  });
+  const fmtDelta=(v,old)=>{
+    if(v==null||old==null)return '<td><span class="mu">–</span></td>';
+    const d=v-old,cls=d>0?'up':d<0?'dn':'mu',sign=d>0?'+':d<0?'−':'';
+    return `<td><b class="${cls}">${sign}${fmt(Math.abs(d))}</b></td>`;
   };
-  const days = Array.from({length:nd},(_,i)=>i);
-  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[m-1]} ${i+1}<br>${WD[new Date(y,m-1,i+1).getDay()]}</th>`).join('')}</tr>`;
-  let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
-  body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
-  body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
-  body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
-  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
-  const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
-  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
-   <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
-   <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
-   <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
-   <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
-  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
-  <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
+  const cell=(v,rooms)=>{
+    if(v==null)return '<td class="no"><small>no record</small></td>';
+    return `<td><b>${fmt(v)}</b><small>${pct(rooms?v/rooms:NaN)}</small></td>`;
+  };
+  const head=`<tr><th class="f">Hotel</th>${days.map(d=>`<th>${MN[mo-1]} ${d}<br>${WD[new Date(ty,mo-1,d).getDay()]}</th>`).join('')}</tr>`;
+  let body=props.map(p=>{
+    const rooms=+p.total_rooms||0;
+    return `<tr><td class="f"><b>${p.name}</b><small>${rooms} rooms · ${fmt(rooms*nd)} room nights</small></td>${values[p.code].map(v=>cell(v,rooms)).join('')}</tr>`;
+  }).join('');
+  body+=`<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(capMonth)} room nights</small></td>${total.map(v=>cell(v,capDay)).join('')}</tr>`;
+  body+=`<tr><td class="f"><button class="lb" data-a="ex">Added since previous upload</button><small>${previous||'No previous snapshot available'}</small></td>${days.map((d,i)=>fmtDelta(total[i],previousTotal[i])).join('')}</tr>`;
+  body+=props.map(p=>`<tr class="sub"><td class="f"><b>${p.name}</b><small>change since previous upload</small></td>${days.map((d,i)=>fmtDelta(values[p.code][i],previousValues[p.code][i])).join('')}</tr>`).join('');
+
+  const booked=total.reduce((s,v)=>s+(v||0),0);
+  const prevBooked=previousTotal.reduce((s,v)=>s+(v||0),0);
+  const added=previous==null?null:booked-prevBooked;
+  const missing=days.filter((d,i)=>total[i]==null).length;
+  $('#view').innerHTML=`${bar}<div class="cards">
+    <div class="c"><small>Room nights on the books</small><b>${fmt(booked)}</b><i>latest upload: ${latest}</i></div>
+    <div class="c"><small>Occupancy for the month</small><b>${pct(capMonth?booked/capMonth:NaN)}</b><i>of ${fmt(capMonth)} room nights</i></div>
+    <div class="c"><small>Added since the previous upload</small><b class="${added==null?'':added>=0?'up':'dn'}">${added==null?'–':(added>0?'+':added<0?'−':'')+fmt(Math.abs(added))}</b><i>${previous?`previous upload: ${previous}`:'No previous upload to compare'}</i></div>
+    <div class="c"><small>Stay dates with no record</small><b class="${missing?'dn':''}">${missing}</b><i>days without ADR stay-date data</i></div>
+  </div>
+  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by stay date</h3><p class="note">Stay dates are taken directly from the ADR report. Values show the latest available upload (${latest}); the comparison row shows the change from the previous upload${previous?` (${previous})`:''}.</p><table class="dm${S.ex?' open':''}">${head}${body}</table>
+  <p class="note">Percentages show daily booked room nights against the property's room count. Green = increase; red = decrease. “No record” means no matching stay-date record was found in the selected snapshot.</p></div>`;
 }
 
 /* Day grid (bookings received / cancelled): rows = days, columns = hotels. Click a number for the bookings behind it. */
