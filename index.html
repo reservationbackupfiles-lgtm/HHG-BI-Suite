@@ -37,14 +37,12 @@ main{padding:0 28px 28px;min-width:0}
 .c{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .c small{color:var(--mut);font-weight:700}.c b{display:block;font-size:24px;font-weight:800}.c i{font-style:normal;color:var(--mut);font-size:12.5px;display:block}
 .c.kpi-help{position:relative}
-.kpi-help-head{display:flex;align-items:center;gap:5px}
-.kpi-help-head small{display:inline-block}
-.kpi-help-btn{width:17px;height:17px;flex:0 0 17px;border:1px solid #81949B;border-radius:50%;padding:0;background:#fff;color:#526A73;font-size:11px;line-height:15px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.kpi-help-btn{position:absolute;top:12px;right:13px;width:19px;height:19px;flex:0 0 19px;border:1px solid #81949B;border-radius:50%;padding:0;background:#fff;color:#526A73;font-size:12px;line-height:17px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .kpi-help-btn:hover,.kpi-help-btn:focus-visible,.kpi-help.open .kpi-help-btn{background:#EAF5F6;border-color:var(--sea);color:var(--sea);outline:none}
-.kpi-help-pop{position:absolute;left:0;top:calc(100% + 9px);z-index:60;width:min(245px,calc(100vw - 40px));white-space:normal;background:#10242B;color:#fff;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.45;font-weight:400;box-shadow:0 8px 22px rgba(0,0,0,.2);opacity:0;visibility:hidden;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease;pointer-events:none}
-.kpi-help:hover .kpi-help-pop,.kpi-help:focus-within .kpi-help-pop,.kpi-help.open .kpi-help-pop{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
-.cards .c.kpi-help:nth-child(n+4) .kpi-help-pop{left:auto;right:0}
-@media(max-width:900px){.cards .c.kpi-help:nth-child(n+3) .kpi-help-pop{left:auto;right:0}}
+.kpi-help-pop{position:absolute;top:39px;right:10px;z-index:60;width:min(300px,calc(100vw - 48px));white-space:normal;background:#10242B;color:#fff;border-radius:8px;padding:11px 13px;font-size:11.5px;line-height:1.5;font-weight:400;box-shadow:0 8px 22px rgba(0,0,0,.2);opacity:0;visibility:hidden;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease;pointer-events:none}
+.kpi-help.open .kpi-help-pop{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+.kpi-help-pop strong{font-weight:700}
+@media(max-width:700px){.kpi-help-pop{right:0;width:min(280px,calc(100vw - 40px))}}
 
 
 .p{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;overflow-x:auto}.p h3{margin:0 0 10px;font-size:15px}
@@ -852,15 +850,16 @@ const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.y
 function kc(t,a,b,f,pts){
   const d=a-b, g=b?d/b:NaN, c=isNaN(d)?'':d>=0?'up':'dn', ar=d>=0?'▲':'▼';
   const dt = isNaN(d) ? '' : `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
-  const tips={
-    'Room revenue':'Room revenue from ADR reports. Cancelled revenue is shown separately in Daily Pickup.',
-    'Occupancy':'Room nights sold ÷ available room nights.',
-    'ADR':'Room revenue ÷ room nights sold.',
-    'RevPAR':'Room revenue ÷ available room nights.',
-    'Rooms sold':'Room nights sold, not reservation count.'
+  const ff=filt(), period=ff.month==='ALL'?'all months':MN[+ff.month-1], propLabel=S.selectedProps===null?'all properties':selectedCodes().map(code=>S.props.find(p=>p.code===code)?.name||code).join(', ');
+  const basis={
+    'Room revenue':`Total room revenue recorded in the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This KPI follows the selected Dashboard filters. Cancelled revenue is monitored separately in Daily Pickup and is not automatically added to this ADR-based figure.`,
+    'Occupancy':`Room nights sold divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. Available room nights are calculated using each property's room inventory multiplied by the number of days in the selected period. The comparison is against the same period last year.`,
+    'ADR':`Average Daily Rate (ADR) is room revenue divided by room nights sold for ${period} ${ff.year}, covering ${propLabel}. It represents the average room revenue earned per occupied room night. The comparison is against the same period last year.`,
+    'RevPAR':`Revenue per Available Room (RevPAR) is room revenue divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. It reflects room revenue generated across the total available room inventory, including unoccupied rooms. The comparison is against the same period last year.`,
+    'Rooms sold':`Total room nights sold in the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This figure represents room nights, not the number of individual reservations or guests. The comparison is against the same period last year.`
   };
-  const tip=(tips[t]||`${t} for the selected period.`).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return `<div class="c kpi-help"><div class="kpi-help-head"><small>${t}</small><button type="button" class="kpi-help-btn" aria-label="About ${t}" aria-expanded="false" title="About this KPI">?</button><span class="kpi-help-pop" role="tooltip">${tip}</span></div><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
+  const tip=(basis[t]||`${t} for ${period} ${ff.year}, covering ${propLabel}.`).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="c kpi-help"><small>${t}</small><button type="button" class="kpi-help-btn" aria-label="Show ${t} explanation" aria-expanded="false" title="Click for KPI explanation">?</button><span class="kpi-help-pop" role="tooltip">${tip}</span><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
 }
 function mk(id, type, labels, sets, fm, horiz){
   charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
