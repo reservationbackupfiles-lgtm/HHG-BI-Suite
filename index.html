@@ -660,7 +660,17 @@ async function load(){
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
       return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
     }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
-    S.pace = adrPace.length ? adrPace : rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    const snapshotPace = rawPace.map(r=>{
+      const d=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)], year_no=+d.slice(0,4), month_no=+d.slice(5,7);
+      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    // Merge both history sources. adr_history is preferred for duplicate keys,
+    // but pace_snapshots must still contribute months missing from adr_history.
+    const paceByKey = new Map();
+    snapshotPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
+    adrPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
+    S.pace = [...paceByKey.values()];
     return true;
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
@@ -892,34 +902,10 @@ function compare(){
 /* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) {
-    const baseDate = new Date();
-    const prevDate = new Date(baseDate.getFullYear(),baseDate.getMonth()-1,1);
-    const tabs = `<button class="tab${S.po===-1?' on':''}" data-a="po:-1">Last month · ${MN[prevDate.getMonth()]}</button>` +
-      [0,1,2,3,4].map(o=>{const dt=new Date(baseDate.getFullYear(),baseDate.getMonth()+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
-    $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="p"><h3>No Pace history yet</h3><p class="note">Upload ADR reports to build daily Pace history. Historical months will display only when their snapshots are retained in Supabase.</p></div>`;
-    return;
-  }
-  const latestSnapshot = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,'');
-  const latestDate = new Date(`${latestSnapshot}T00:00:00`);
-  // The Pace page is anchored to the actual calendar month by default.
-  // Last Month switches the snapshot history to the previous calendar month.
-  // Future-period tabs use this month's snapshots as their baseline.
-  const currentDate = new Date();
-  const prevDate = new Date(currentDate.getFullYear(),currentDate.getMonth()-1,1);
-  const snapshotMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + (S.po < 0 ? -1 : 0), 1);
-  const y=snapshotMonth.getFullYear(), m=snapshotMonth.getMonth()+1;
-  const monthSnapshots = S.pace.filter(r=>String(r.snapshot_date||'').slice(0,7)===`${y}-${pad(m)}`);
-  if (!monthSnapshots.length) {
-    const label = `${MN[m-1]} ${y}`;
-    const emptyTabs = `<button class="tab${S.po===-1?' on':''}" data-a="po:-1">Last month · ${MN[prevDate.getMonth()]}</button>` + [0,1,2,3,4].map(o=>{const dt=new Date(currentDate.getFullYear(),currentDate.getMonth()+o,1);return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days'} · ${MN[dt.getMonth()]}</button>`;}).join('');
-    $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${emptyTabs}</div><div class="p"><h3>No Pace snapshots available for ${label}</h3><p class="note">There are no uploaded Pace records dated in this month. Upload history for that period is required to display the selected month's daily records.</p></div>`;
-    return;
-  }
-  const last = monthSnapshots.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,'');
-  const ld=+last.slice(8);
+  if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
+  const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
   const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
-  const target = new Date(y,m-1+(S.po<0?0:S.po),1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(ty,mo), iso = d => `${ty}-${pad(mo)}-${pad(d)}`;
+  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
   const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
   const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
   const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
@@ -935,13 +921,13 @@ function pace(){
     return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
   };
   const days = Array.from({length:nd},(_,i)=>i);
-  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[mo-1]} ${i+1}<br>${WD[new Date(ty,mo-1,i+1).getDay()]}</th>`).join('')}</tr>`;
+  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[m-1]} ${i+1}<br>${WD[new Date(y,m-1,i+1).getDay()]}</th>`).join('')}</tr>`;
   let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
   body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
   body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
   body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
   const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
-  const tabs = `<button class="tab${S.po===-1?' on':''}" data-a="po:-1">Last month · ${MN[prevDate.getMonth()]}</button>` + [0,1,2,3,4].map(o=>{const dt=new Date(currentDate.getFullYear(),currentDate.getMonth()+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
+  const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
    <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
    <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
