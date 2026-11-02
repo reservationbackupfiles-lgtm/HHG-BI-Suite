@@ -366,6 +366,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
   <button class="nav" data-v="dash">Dashboard</button>
   <button class="nav" data-v="compare">Compare</button>
   <button class="nav" data-v="pace">Pace</button>
+  <button class="nav" data-v="reports">Reports</button>
   <button class="nav" data-v="res">Reservations</button>
   <button class="nav" data-v="cancel">Cancellations</button>
 
@@ -421,7 +422,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportMonth:today().slice(0,7),f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -751,7 +752,7 @@ const selectedCodes = () => S.selectedProps === null
 const filterSelected = cs => cs.filter(c => selectedCodes().includes(c));
 
 /* shared helpers */
-const V = {dash, compare, pace, res, cancel, admin, users};
+const V = {dash, compare, pace, reports, res, cancel, admin, users};
 function show(v){
   S.view = v; charts.forEach(c=>c.destroy()); charts = [];
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
@@ -973,6 +974,122 @@ function ddPop(){
   return `<div class="ov" data-a="ddx"><div class="dlg" role="dialog" aria-modal="true" aria-label="Booking details" data-a="noop"><div class="dh"><h3>${nm} · ${d.d?src.month.slice(0,3)+' '+d.d:src.month}</h3><button class="nb" data-a="ddx" aria-label="Close">✕</button></div>${tbl(head,body)}<p class="note">Guest names appear when the PMS export includes them.</p></div></div>`;
 }
 
+
+
+/* Reports: historical and exportable reporting, kept separate from operational Pace */
+const reportEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reportMonthLabel = m => {
+  if(!/^\d{4}-\d{2}$/.test(m||'')) return 'Selected month';
+  const [y,mo]=m.split('-').map(Number); return `${MN[mo-1]} ${y}`;
+};
+function buildReportData(){
+  const month=S.reportMonth||today().slice(0,7), type=S.reportType||'pace', codes=selectedCodes();
+  const props=Object.fromEntries(S.props.map(p=>[p.code,p]));
+  if(type==='pace'){
+    const rows=S.pace.filter(r=>r.year_no===+month.slice(0,4)&&r.month_no===+month.slice(5,7)&&codes.includes(r.property))
+      .sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)||a.property.localeCompare(b.property));
+    const detail=rows.map(r=>({
+      'Stay Month':month,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Upload Date':r.snapshot_date,'Room Nights on the Books':+r.ty_rooms_sold||0,
+      'Room Night Capacity':(props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no),
+      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))):null
+    }));
+    return {title:`Pace History - ${reportMonthLabel(month)}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
+  }
+  if(type==='monthly'){
+    const source=S.adr.filter(r=>`${r.year}-${pad(r.month)}`===month&&codes.includes(r.property));
+    const grouped=new Map();
+    source.forEach(r=>{
+      const x=grouped.get(r.property)||{property:r.property,sold:0,revenue:0,available:0};
+      x.sold+=+r.rooms_sold||0; x.revenue+=+r.room_revenue||0; x.available+=+r.rooms_available||0; grouped.set(r.property,x);
+    });
+    const rows=[...grouped.values()].map(x=>({
+      'Property':props[x.property]?.name||x.property,'Property Code':x.property,
+      'Room Nights Sold':x.sold,'Room Revenue':x.revenue,'Available Room Nights':x.available,
+      'Occupancy':x.available?x.sold/x.available:null,'ADR':x.sold?x.revenue/x.sold:null,'RevPAR':x.available?x.revenue/x.available:null
+    })).sort((a,b)=>a.Property.localeCompare(b.Property));
+    return {title:`Monthly Performance - ${reportMonthLabel(month)}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
+  }
+  if(type==='reservations'){
+    const rows=S.res.filter(r=>String(r.check_in||'').slice(0,7)===month&&codes.includes(r.property))
+      .sort((a,b)=>String(a.check_in||'').localeCompare(String(b.check_in||'')));
+    const data=rows.map(r=>({
+      'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Guest Name':r.guest_name||'','Room Type':r.room_type||'','Check-in':r.check_in||'','Check-out':r.check_out||'',
+      'Room Nights':+r.room_nights||0,'Revenue':+r.grand_total||0,'Status':r.status||'','Source':r.source||''
+    }));
+    return {title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
+  }
+  const rows=S.cancellations.filter(r=>String(r.cancellation_date||'').slice(0,7)===month&&codes.includes(r.property))
+    .sort((a,b)=>String(a.cancellation_date||'').localeCompare(String(b.cancellation_date||'')));
+  const data=rows.map(r=>({
+    'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
+    'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'','Source':r.source||'',
+    'Room Nights':+r.room_nights||0,'Original Room Revenue':+(r.room_revenue_total||0)
+  }));
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Cancellation Date','Booking Date','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Revenue represents the original booking value available in the cancellation data.'};
+}
+function reports(){
+  $('#ttl').textContent='Reports';
+  const reportOptions=[
+    ['pace','Pace History (daily snapshots)'],
+    ['monthly','Monthly Performance Summary'],
+    ['reservations','Reservations Register'],
+    ['cancellations','Cancellations Register']
+  ];
+  const data=buildReportData(), preview=data.rows.slice(0,20);
+  const table=preview.length
+    ? `<div style="overflow:auto"><table><thead><tr>${data.headers.map(h=>`<th>${reportEsc(h)}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr>${data.headers.map(h=>`<td>${reportEsc(r[h]===null?'—':r[h])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+    : '<p class="mu">No records found for this report and month. Check the selected month, property filter, and uploaded source data.</p>';
+  $('#view').innerHTML=`
+    <div class="bar">${sharedPropertyFilter()}
+      <div class="filter-pill"><span>Report</span><select id="reportType">${reportOptions.map(([v,l])=>`<option value="${v}"${S.reportType===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="filter-pill"><span>Month</span><input id="reportMonth" type="month" value="${reportEsc(S.reportMonth)}" style="width:145px;border:0;padding:4px;background:transparent;color:var(--ink);font-weight:700"></div>
+    </div>
+    <div class="cards">
+      <div class="c"><small>Report</small><b style="font-size:17px">${reportEsc(data.title)}</b><i>Selected reporting period</i></div>
+      <div class="c"><small>Records</small><b>${fmt(data.rows.length)}</b><i>${S.selectedProps===null?'All properties':selectedCodes().length+' selected properties'}</i></div>
+      <div class="c"><small>Export</small><b style="font-size:17px">Excel / CSV</b><i>Download the filtered report</i></div>
+    </div>
+    <div class="p">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0">${reportEsc(data.title)}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" style="margin:0" data-a="rptExport">Export Excel</button>
+          <button class="tab" data-a="rptCSV">Export CSV</button>
+        </div>
+      </div>
+      <p class="note">${reportEsc(data.note)}</p>
+      <p class="note">Preview shows up to 20 rows. Export includes all matching records.</p>
+      ${table}
+    </div>`;
+  $('#reportType').onchange=e=>{S.reportType=e.target.value;reports();};
+  $('#reportMonth').onchange=e=>{if(e.target.value){S.reportMonth=e.target.value;reports();}};
+}
+function exportReportExcel(){
+  const data=buildReportData(), wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(data.rows,{header:data.headers});
+  XLSX.utils.book_append_sheet(wb,ws,'Report');
+  if(S.reportType==='pace'){
+    const byDate=[...new Set(data.rows.map(r=>r['Upload Date']))].sort();
+    const properties=[...new Set(data.rows.map(r=>r['Property']))].sort();
+    const matrix=[['Property',...byDate]];
+    properties.forEach(p=>matrix.push([p,...byDate.map(d=>{
+      const r=data.rows.find(x=>x.Property===p&&x['Upload Date']===d); return r?r['Room Nights on the Books']:null;
+    })]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(matrix),'Pace Matrix');
+  }
+  XLSX.writeFile(wb,`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.xlsx`);
+  toast('Excel report downloaded.');
+}
+function exportReportCSV(){
+  const data=buildReportData(), ws=XLSX.utils.json_to_sheet(data.rows,{header:data.headers});
+  const csv=XLSX.utils.sheet_to_csv(ws), blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url;a.download=`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.csv`;
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  toast('CSV report downloaded.');
+}
 
 /* Reservations */
 const rtext = r => !r ? 'All' : r.s===r.e ? fd(r.s) : fd(r.s)+' – '+fd(r.e);
@@ -1338,7 +1455,7 @@ const A = {
   no: () => { S.pk.open=null; },
   ok: () => { const p=S.pk; if (!p.ds) return; S.rg[p.open]={s:p.ds,e:p.de||p.ds}; p.open=null; },
   rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; S.f.cg='book'; S.dd=null; },
-  po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; },
+  po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; }, rptExport: () => exportReportExcel(), rptCSV: () => exportReportCSV(),
   dd: v => { const [kind,d,c]=v.split(':'); S.dd={kind,d:+d,c}; }, ddx: () => { S.dd=null; },
   us: async id => {
     const g = k => document.getElementById(k+'_'+id), u = {view_from:g('f').value||null, view_to:g('t').value||null};
