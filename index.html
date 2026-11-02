@@ -422,7 +422,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportMonth:today().slice(0,7),f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportMonth:today().slice(0,7),reportPage:1,reportPageSize:10,f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -1029,6 +1029,16 @@ function buildReportData(){
   }));
   return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Cancellation Date','Booking Date','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Revenue represents the original booking value available in the cancellation data.'};
 }
+function reportNumber(value, digits=2){
+  if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
+  return Number(value).toLocaleString('en-PH',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+}
+function reportCell(value, header){
+  if(value===null||value===undefined||value==='') return '—';
+  if(header==='Occupancy on Books'||header==='Occupancy') return `${(Number(value)*100).toFixed(2)}%`;
+  if(header==='ADR'||header==='RevPAR') return reportNumber(value,2);
+  return reportEsc(value);
+}
 function reports(){
   $('#ttl').textContent='Reports';
   const reportOptions=[
@@ -1037,10 +1047,34 @@ function reports(){
     ['reservations','Reservations Register'],
     ['cancellations','Cancellations Register']
   ];
-  const data=buildReportData(), preview=data.rows.slice(0,20);
-  const table=preview.length
-    ? `<div style="overflow:auto"><table><thead><tr>${data.headers.map(h=>`<th>${reportEsc(h)}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr>${data.headers.map(h=>`<td>${reportEsc(r[h]===null?'—':r[h])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+  const data=buildReportData();
+  const paginated=['reservations','cancellations'].includes(S.reportType);
+  const pageSize=paginated?(+S.reportPageSize||10):Math.max(data.rows.length,1);
+  const total=data.rows.length;
+  const pages=Math.max(1,Math.ceil(total/pageSize));
+  S.reportPage=Math.min(Math.max(1,+S.reportPage||1),pages);
+  const page=S.reportPage;
+  const first=total?((page-1)*pageSize+1):0, last=Math.min(page*pageSize,total);
+  const visibleRows=paginated?data.rows.slice((page-1)*pageSize,page*pageSize):data.rows.slice(0,20);
+  const table=visibleRows.length
+    ? `<div style="overflow:auto"><table><thead><tr>${data.headers.map(h=>`<th>${reportEsc(h)}</th>`).join('')}</tr></thead><tbody>${visibleRows.map(r=>`<tr>${data.headers.map(h=>`<td>${reportCell(r[h],h)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
     : '<p class="mu">No records found for this report and month. Check the selected month, property filter, and uploaded source data.</p>';
+  const pager=paginated?`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="note" style="margin:0">Rows per page</span>
+        <select id="reportPageSize" style="width:auto;min-width:82px;padding:7px 10px">
+          ${[10,15,20,50,100,250].map(n=>`<option value="${n}"${pageSize===n?' selected':''}>${n}</option>`).join('')}
+        </select>
+        <span class="note" style="margin:0">Showing ${fmt(first)} to ${fmt(last)} of ${fmt(total)} entries</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <button class="tab" data-rpt-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>‹</button>
+        ${Array.from({length:pages},(_,i)=>i+1).filter(n=>pages<=7||n===1||n===pages||Math.abs(n-page)<=1).map((n,i,a)=>`${i&&n-a[i-1]>1?'<span class="mu">…</span>':''}<button class="tab${n===page?' on':''}" data-rpt-page="${n}">${n}</button>`).join('')}
+        <button class="tab" data-rpt-page="${Math.min(pages,page+1)}" ${page>=pages?'disabled':''}>›</button>
+        <span class="note" style="margin:0">Page ${fmt(page)} of ${fmt(pages)}</span>
+      </div>
+    </div>`:'<p class="note">Preview shows up to 20 rows. Export includes all matching records.</p>';
   $('#view').innerHTML=`
     <div class="bar">${sharedPropertyFilter()}
       <div class="filter-pill"><span>Report</span><select id="reportType">${reportOptions.map(([v,l])=>`<option value="${v}"${S.reportType===v?' selected':''}>${l}</option>`).join('')}</select></div>
@@ -1048,8 +1082,8 @@ function reports(){
     </div>
     <div class="cards">
       <div class="c"><small>Report</small><b style="font-size:17px">${reportEsc(data.title)}</b><i>Selected reporting period</i></div>
-      <div class="c"><small>Records</small><b>${fmt(data.rows.length)}</b><i>${S.selectedProps===null?'All properties':selectedCodes().length+' selected properties'}</i></div>
-      <div class="c"><small>Export</small><b style="font-size:17px">Excel / CSV</b><i>Download the filtered report</i></div>
+      <div class="c"><small>Records</small><b>${fmt(total)}</b><i>${S.selectedProps===null?'All properties':selectedCodes().length+' selected properties'}</i></div>
+      <div class="c"><small>Export</small><b style="font-size:17px">Excel / CSV</b><i>Download all filtered records</i></div>
     </div>
     <div class="p">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1060,15 +1094,28 @@ function reports(){
         </div>
       </div>
       <p class="note">${reportEsc(data.note)}</p>
-      <p class="note">Preview shows up to 20 rows. Export includes all matching records.</p>
       ${table}
+      ${pager}
     </div>`;
-  $('#reportType').onchange=e=>{S.reportType=e.target.value;reports();};
-  $('#reportMonth').onchange=e=>{if(e.target.value){S.reportMonth=e.target.value;reports();}};
+  $('#reportType').onchange=e=>{S.reportType=e.target.value;S.reportPage=1;reports();};
+  $('#reportMonth').onchange=e=>{if(e.target.value){S.reportMonth=e.target.value;S.reportPage=1;reports();}};
+  const sizeSelect=$('#reportPageSize');
+  if(sizeSelect) sizeSelect.onchange=e=>{S.reportPageSize=+e.target.value;S.reportPage=1;reports();};
+  document.querySelectorAll('[data-rpt-page]').forEach(b=>b.onclick=()=>{S.reportPage=+b.dataset.rptPage;reports();});
 }
 function exportReportExcel(){
   const data=buildReportData(), wb=XLSX.utils.book_new();
   const ws=XLSX.utils.json_to_sheet(data.rows,{header:data.headers});
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1:A1');
+  data.headers.forEach((header,col)=>{
+    const fmt=header==='Occupancy'||header==='Occupancy on Books'?'0.00%':
+      (header==='ADR'||header==='RevPAR')?'#,##0.00':null;
+    if(!fmt)return;
+    for(let row=1;row<=range.e.r;row++){
+      const cell=ws[XLSX.utils.encode_cell({r:row,c:col})];
+      if(cell&&typeof cell.v==='number') cell.z=fmt;
+    }
+  });
   XLSX.utils.book_append_sheet(wb,ws,'Report');
   if(S.reportType==='pace'){
     const byDate=[...new Set(data.rows.map(r=>r['Upload Date']))].sort();
@@ -1083,7 +1130,12 @@ function exportReportExcel(){
   toast('Excel report downloaded.');
 }
 function exportReportCSV(){
-  const data=buildReportData(), ws=XLSX.utils.json_to_sheet(data.rows,{header:data.headers});
+  const data=buildReportData();
+  const csvRows=data.rows.map(row=>Object.fromEntries(data.headers.map(h=>[
+    h,(h==='Occupancy'||h==='Occupancy on Books')&&row[h]!=null?`${(Number(row[h])*100).toFixed(2)}%`:
+      (h==='ADR'||h==='RevPAR')&&row[h]!=null?reportNumber(row[h],2):row[h]
+  ])));
+  const ws=XLSX.utils.json_to_sheet(csvRows,{header:data.headers});
   const csv=XLSX.utils.sheet_to_csv(ws), blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url;a.download=`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.csv`;
