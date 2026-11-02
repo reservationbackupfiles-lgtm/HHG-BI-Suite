@@ -766,11 +766,11 @@ const empty = m => { $('#view').innerHTML = `<p class="mu">${m}</p>`; };
 const opts = (a,v) => a.map(([k,t])=>`<option value="${k}"${String(k)===String(v)?' selected':''}>${t}</option>`).join('');
 const sel = (id,l,a,v) => `<div><label for="${id}">${l}</label><select id="${id}">${opts(a,v)}</select></div>`;
 const propOpts = () => [['ALL','All properties'],...S.props.map(p=>[p.code,p.name])];
-const years = () => [...new Set(S.adr.map(r=>r.year))].sort((a,b)=>b-a);
+const years = () => [...new Set([...S.adr.map(r=>r.year), +today().slice(0,4)])].sort((a,b)=>b-a);
 const codes = c => c==='ALL' ? S.props.map(p=>p.code) : [c];
 const bind = (ks,fn) => ks.forEach(k => { const el=$('#'+k); if(el) el.onchange = e => { S.f[k]=e.target.value; fn(); }; });
 const tbl = (h,rows,cls) => `<table${cls?` class="${cls}"`:''}><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
-function filt(){ const f=S.f; f.year??=years()[0]; f.month??='ALL'; return f; }
+function filt(){ const f=S.f; f.year??=+today().slice(0,4); f.month??='ALL'; return f; }
 const inlineFilter = (id, label, options, value) => `<div class="filter-pill"><span>${label}</span><select id="${id}" aria-label="${label}">${opts(options,value)}</select></div>`;
 const filterBar = noMonth => {
   const f=filt();
@@ -806,10 +806,20 @@ function dash(){
   const ty=agg(y,ms,cs), ly=agg(y-1,ms,cs), msA=monthsFor(y,f.month,all);
   const T = {occ:'Occupancy by property',rev:'Room revenue by property',adr:'ADR by property',rvp:'RevPAR by property'};
   $('#view').innerHTML = filterBar()+`<div class="cards">${kc('Room revenue',ty.rev,ly.rev,php)}${kc('Occupancy',ty.occ,ly.occ,pct,1)}${kc('ADR',ty.adr,ly.adr,php)}${kc('RevPAR',ty.revpar,ly.revpar,php)}${kc('Rooms sold',ty.sold,ly.sold,fmt)}</div>
-  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button><button type="button" data-pick-year="2025">2025</button><button type="button" data-pick-year="2026">2026</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
+  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button><button type="button" data-pick-year="${+today().slice(0,4)-1}">${+today().slice(0,4)-1}</button><button type="button" data-pick-year="${+today().slice(0,4)}">${+today().slice(0,4)}</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
   <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
   <div class="two">${Object.keys(T).map(k=>`<div class="p"><h3>${T[k]}</h3><div class="ch"><canvas id="c_${k}"></canvas></div></div>`).join('')}</div>
-  <p class="note">Occupancy = rooms sold ÷ (rooms × days). Last year compares the same months that have data this year.</p>`;
+  <div class="p"><h3>Property performance, ${y}</h3>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Property</th><th>Room revenue</th><th>Occupancy</th><th>ADR</th><th>RevPAR</th><th>Rooms sold</th></tr></thead>
+      <tbody>${S.props.filter(p=>selectedCodes().includes(p.code)).map(p=>{
+        const v=agg(y,monthsFor(y,f.month,[p.code]),[p.code]);
+        const hasData=v.sold||v.rev||v.avail;
+        return `<tr><td>${p.name}</td><td>${hasData?php(v.rev):'no data yet'}</td><td>${hasData?pct(v.occ):'–'}</td><td>${hasData?php(v.adr):'–'}</td><td>${hasData?php(v.revpar):'–'}</td><td>${hasData?fmt(v.sold):'–'}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  </div>
+  <p class="note">Occupancy = rooms sold ÷ available room nights. The property table follows the selected year, month, and property filters.</p>`;
   bind(['year','month'], dash);
   bindDailyPickup();
   const mm = Array.from({length:12},(_,i)=>i+1);
