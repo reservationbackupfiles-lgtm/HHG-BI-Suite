@@ -674,13 +674,13 @@ async function load(){
     const adrPace = rawAdrHistory.map(r=>{
       const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
-      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+      return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.stay_date)&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
     const snapshotPace = rawPace.map(r=>{
-      const d=String(r.stay_date||''), snap=String(r.snapshot_date||'');
-      const property=codeById[String(r.property_id)], year_no=+d.slice(0,4), month_no=+d.slice(5,7);
-      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+      const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
+      return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.stay_date)&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
     // Merge both history sources. adr_history is preferred for duplicate keys,
     // but pace_snapshots must still contribute months missing from adr_history.
     const paceByKey = new Map();
@@ -983,62 +983,72 @@ function compare(){
   mk('#c0','line',MN,[y-1,y,y+1].map((v,i)=>({...ds(v,ser[i],[C2,C1,C3][i]),tension:.25,borderDash:i===2?[6,5]:[]})),mfmt);
 }
 
-/* Pace: room nights on the books for a month, one column per upload day */
+/* Pace: selected stay month, with calendar-day columns representing ADR upload dates */
 function pace(){
   $('#ttl').textContent = 'Pace';
   if (!S.pace.length) return empty('No ADR Pace history yet. Upload ADR reports daily to build the booking pace history.');
 
   const allSnapshots=[...new Set(S.pace.map(r=>String(r.snapshot_date||'')).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+  if(!allSnapshots.length) return empty('No valid ADR upload dates were found in Pace history.');
+
   const latest=allSnapshots.at(-1);
-  const uploadMonth=latest.slice(0,7);
-  const [uy,um]=uploadMonth.split('-').map(Number);
-  const todayDay=+latest.slice(8,10);
-  const uploadDates=Array.from({length:todayDay},(_,i)=>`${uploadMonth}-${pad(i+1)}`);
+  const [uy,um]=latest.slice(0,7).split('-').map(Number);
+  const todayDate=today();
+  const displayDay=(todayDate.slice(0,7)===latest.slice(0,7))?+todayDate.slice(8,10):+latest.slice(8,10);
+  const daysInUploadMonth=dim(uy,um);
+  const uploadDates=Array.from({length:daysInUploadMonth},(_,i)=>`${latest.slice(0,7)}-${pad(i+1)}`);
   const prevUpload=[...allSnapshots].filter(d=>d<latest).at(-1)||null;
 
-  const anchor=new Date(uy,um-1,1);
   const stayMonth=new Date(uy,um-1+S.po,1);
   const stayKey=`${stayMonth.getFullYear()}-${pad(stayMonth.getMonth()+1)}`;
   const cs=S.props.filter(p=>selectedCodes().includes(p.code));
-  const monthRows=S.pace.filter(r=>String(r.stay_date||'').slice(0,7)===stayKey);
   const valueMap=new Map();
   const uploadedMap=new Set();
+
   S.pace.forEach(r=>{
     const code=r.property, snap=String(r.snapshot_date||'');
     if(code&&snap) uploadedMap.add(`${code}|${snap}`);
-    if(String(r.stay_date||'').slice(0,7)===stayKey){
+    const rowStayMonth=String(r.stay_month||r.stay_date||`${r.year_no}-${pad(r.month_no)}`).slice(0,7);
+    if(rowStayMonth===stayKey && code && snap){
       valueMap.set(`${code}|${snap}`,+r.ty_rooms_sold||0);
     }
   });
+
   const hasUpload=(code,snap)=>uploadedMap.has(`${code}|${snap}`);
   const getVal=(code,snap)=>valueMap.has(`${code}|${snap}`)?valueMap.get(`${code}|${snap}`):null;
   const previousValue=(code,snap)=>{
-    const candidates=uploadDates.filter(d=>d<snap&&getVal(code,d)!==null);
+    const candidates=allSnapshots.filter(d=>d<snap&&d.slice(0,7)===snap.slice(0,7)&&getVal(code,d)!==null);
     const d=candidates.at(-1);
     return d?{date:d,value:getVal(code,d)}:null;
   };
   const cell=(code,snap)=>{
+    const day=+snap.slice(8,10);
+    if(day>displayDay) return '<td class="future"></td>';
     if(!hasUpload(code,snap)) return '<td class="no">no upload</td>';
     const v=getVal(code,snap);
     if(v===null) return '<td class="no">—</td>';
     const prev=previousValue(code,snap);
-    if(!prev) return `<td><b>${fmt(v)}</b><small class="mu">First snapshot</small></td>`;
+    if(!prev) return `<td><b>${fmt(v)}</b></td>`;
     const d=v-prev.value, sign=d>0?'+':d<0?'−':'';
     const cls=d>0?'up':d<0?'dn':'mu';
     return `<td><b>${fmt(v)}</b><small class="${cls}">${sign}${fmt(Math.abs(d))}</small></td>`;
   };
+
   const rows=cs.map(p=>`<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms||0} rooms · ${(p.total_rooms||0)*dim(stayMonth.getFullYear(),stayMonth.getMonth()+1)} room nights</small></td>${uploadDates.map(d=>cell(p.code,d)).join('')}</tr>`).join('');
   const totalCell=snap=>{
+    const day=+snap.slice(8,10);
+    if(day>displayDay) return '<td class="future"></td>';
+    if(!cs.some(p=>hasUpload(p.code,snap))) return '<td class="no">no upload</td>';
     const present=cs.filter(p=>getVal(p.code,snap)!==null);
-    if(!hasUpload('___',snap)&&!cs.some(p=>hasUpload(p.code,snap))) return '<td class="no">no upload</td>';
     if(!present.length) return '<td class="no">—</td>';
     const v=present.reduce((sum,p)=>sum+getVal(p.code,snap),0);
-    const prevDate=[...uploadDates].filter(d=>d<snap&&cs.some(p=>getVal(p.code,d)!==null)).at(-1);
-    if(!prevDate) return `<td><b>${fmt(v)}</b><small class="mu">First snapshot</small></td>`;
+    const prevDate=allSnapshots.filter(d=>d<snap&&d.slice(0,7)===snap.slice(0,7)&&cs.some(p=>getVal(p.code,d)!==null)).at(-1);
+    if(!prevDate) return `<td><b>${fmt(v)}</b></td>`;
     const pv=cs.reduce((sum,p)=>sum+(getVal(p.code,prevDate)??0),0);
     const delta=v-pv, sign=delta>0?'+':delta<0?'−':'', cls=delta>0?'up':delta<0?'dn':'mu';
     return `<td><b>${fmt(v)}</b><small class="${cls}">${sign}${fmt(Math.abs(delta))}</small></td>`;
   };
+
   const totals=uploadDates.map(totalCell).join('');
   const latestVals=cs.map(p=>getVal(p.code,latest)).filter(v=>v!==null);
   const latestTotal=latestVals.reduce((a,b)=>a+b,0);
@@ -1047,13 +1057,18 @@ function pace(){
   const net=prevUpload&&latestVals.length&&prevVals.length?latestTotal-previousTotal:null;
   const capacity=cs.reduce((sum,p)=>sum+(p.total_rooms||0)*dim(stayMonth.getFullYear(),stayMonth.getMonth()+1),0);
   const occ=capacity?latestTotal/capacity:0;
-  const missing=Math.max(0,todayDay-new Set(allSnapshots.filter(d=>d.slice(0,7)===uploadMonth)).size);
+  const uploadedDays=new Set(allSnapshots.filter(d=>d.slice(0,7)===latest.slice(0,7)).map(d=>+d.slice(8,10)));
+  const missing=Math.max(0,displayDay-uploadedDays.size);
   const tabs=[-1,0,1,2,3,4].map(o=>{
     const dt=new Date(uy,um-1+o,1);
     const label=o===-1?'Last month':o===0?'This month':`${o*30+30} days`;
     return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;
   }).join('');
-  const dateHeads=uploadDates.map(d=>`<th class="${d===latest?'today':''}">${MN[+d.slice(5,7)-1]} ${+d.slice(8,10)}<br><small>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10)).getDay()]}</small></th>`).join('');
+  const dateHeads=uploadDates.map(d=>{
+    const day=+d.slice(8,10), dt=new Date(uy,um-1,day);
+    return `<th class="${d===latest?'today':''}">${MN[um-1]} ${day}<br><small>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]}</small></th>`;
+  }).join('');
+
   $('#view').innerHTML=`<div class="bar">${sharedPropertyFilter()}${tabs}</div>
   <div class="cards">
    <div class="c"><small>Room nights on the books</small><b>${latestVals.length?fmt(latestTotal):'—'}</b><i>latest upload: ${latest}</i></div>
@@ -1063,7 +1078,7 @@ function pace(){
   </div>
   <div class="p"><h3>Room nights on the books for ${MN[stayMonth.getMonth()]} ${stayMonth.getFullYear()}, by upload day</h3>
   <div class="daygrid-scroll"><table class="dd"><tr><th class="f">Hotel</th>${dateHeads}</tr>${rows}<tr class="tr"><td class="f"><b>All hotels</b><small>Combined OTB room nights</small></td>${totals}</tr></table></div>
-  <p class="note"><b>How to read:</b> Columns are ADR upload dates. Each cell shows the selected stay month's OTB room nights as of that upload. The smaller number is the net change versus the previous available upload for the same stay month and property. A missing upload is not treated as zero. Select another horizon to view another stay month while keeping the same upload-date columns.</p></div>`;
+  <p class="note"><b>How to read:</b> Columns are the calendar dates of ADR uploads for this month. Each populated cell shows the selected stay month's OTB room nights as of that upload. The smaller figure is the net change versus the previous available upload for the same stay month and property. Future dates remain blank; a missed upload is not treated as zero.</p></div>`;
 }
 /* Day grid (bookings received / cancelled): rows = days, columns = hotels. Click a number for the bookings behind it. */
 const sm = (x,k) => x.reduce((s,r)=>s+(+r[k]||0),0);
