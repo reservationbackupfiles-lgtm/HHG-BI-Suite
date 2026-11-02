@@ -36,6 +36,11 @@ main{padding:0 28px 28px;min-width:0}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
 .c{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .c small{color:var(--mut);font-weight:700}.c b{display:block;font-size:24px;font-weight:800}.c i{font-style:normal;color:var(--mut);font-size:12.5px;display:block}
+.c.kpi-help{position:relative;cursor:help;outline:none}
+.c.kpi-help:focus-visible{box-shadow:0 0 0 3px rgba(14,124,134,.22)}
+.c.kpi-help::after{content:attr(data-tip);position:absolute;left:12px;top:calc(100% + 8px);z-index:50;width:min(310px,calc(100vw - 48px));white-space:normal;background:#10242B;color:#fff;border-radius:7px;padding:11px 13px;font-size:12px;line-height:1.5;font-weight:400;box-shadow:0 8px 22px rgba(0,0,0,.2);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease}
+.c.kpi-help:hover::after,.c.kpi-help:focus::after{opacity:1;visibility:visible;transform:translateY(0)}
+
 .p{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;overflow-x:auto}.p h3{margin:0 0 10px;font-size:15px}
 /* Keep long reservation summaries compact; scroll within each card. */
 .res-scroll-card{height:520px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -788,7 +793,17 @@ const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.y
 function kc(t,a,b,f,pts){
   const d=a-b, g=b?d/b:NaN, c=isNaN(d)?'':d>=0?'up':'dn', ar=d>=0?'▲':'▼';
   const dt = isNaN(d) ? '' : `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
-  return `<div class="c"><small>${t}</small><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
+  const ff=filt(), period=ff.month==='ALL'?'all months':MN[+ff.month-1], propLabel=S.selectedProps===null?'all properties':selectedCodes().map(code=>S.props.find(p=>p.code===code)?.name||code).join(', ');
+  const basis={
+    'Room revenue':`Total room revenue from the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This KPI follows the selected Dashboard filters. Cancellation amounts are tracked separately in Daily Pickup and are not added to this ADR-based figure unless they are already reflected in the ADR source data.`,
+    'Occupancy':`Room nights sold divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. Available room nights are based on each property's room inventory multiplied by the days in the selected period. The comparison uses the same period last year.`,
+    'ADR':`Average Daily Rate: room revenue divided by room nights sold for ${period} ${ff.year}, covering ${propLabel}. The comparison uses the same period last year.`,
+    'RevPAR':`Revenue per Available Room: room revenue divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. The comparison uses the same period last year.`,
+    'Rooms sold':`Total room nights sold in the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This is room nights, not the number of individual reservations. The comparison uses the same period last year.`
+  };
+  const tip=(basis[t]||`${t} for ${period} ${ff.year}, covering ${propLabel}.`);
+  const safeTip=tip.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="c kpi-help" tabindex="0" role="note" aria-label="${safeTip}" data-tip="${safeTip}"><small>${t} <span style="font-size:10px;color:var(--mut)">ⓘ</span></small><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
 }
 function mk(id, type, labels, sets, fm, horiz){
   charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
