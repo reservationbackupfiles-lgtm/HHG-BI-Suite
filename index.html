@@ -892,7 +892,19 @@ function compare(){
 /* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
+  if (!S.pace.length) {
+    // Keep the Pace period navigation visible even before the first snapshot is uploaded.
+    const baseDate = new Date();
+    const prevDate = new Date(baseDate.getFullYear(), baseDate.getMonth()-1, 1);
+    const tabs = `<button class="tab${S.po===-1?' on':''}" data-a="po:-1">Last month · ${MN[prevDate.getMonth()]}</button>` +
+      [0,1,2,3,4].map(o => {
+        const dt = new Date(baseDate.getFullYear(), baseDate.getMonth()+o, 1);
+        const label = o===0 ? 'This month' : (o===1?60:o===2?90:o===3?120:150)+' days';
+        return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;
+      }).join('');
+    $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="p"><h3>No Pace history yet</h3><p class="note">Upload ADR reports to build daily Pace history. Historical months will display only when their snapshots are retained in Supabase.</p></div>`;
+    return;
+  }
   const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
   const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
   const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
