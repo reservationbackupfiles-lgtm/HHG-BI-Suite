@@ -675,12 +675,12 @@ async function load(){
       const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
       return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.stay_date)&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
+    }).filter(r=>r.property&&/^\d{4}-\d{2}-\d{2}$/.test(r.stay_date)&&/^\d{4}-\d{2}-\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
     const snapshotPace = rawPace.map(r=>{
       const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
       return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.stay_date)&&/^\\d{4}-\\d{2}-\\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
+    }).filter(r=>r.property&&/^\d{4}-\d{2}-\d{2}$/.test(r.stay_date)&&/^\d{4}-\d{2}-\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
     // Merge both history sources. adr_history is preferred for duplicate keys,
     // but pace_snapshots must still contribute months missing from adr_history.
     const paceByKey = new Map();
