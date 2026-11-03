@@ -1065,73 +1065,137 @@ const reportMonthLabel = m => {
   if(!/^\d{4}-\d{2}$/.test(m||'')) return 'Selected month';
   const [y,mo]=m.split('-').map(Number); return `${MN[mo-1]} ${y}`;
 };
+
 function buildReportData(){
   const month=S.reportMonth||today().slice(0,7), type=S.reportType||'pace', codes=selectedCodes();
   const props=Object.fromEntries(S.props.map(p=>[p.code,p]));
+
   if(type==='pace'){
     const rows=S.pace.filter(r=>r.year_no===+month.slice(0,4)&&r.month_no===+month.slice(5,7)&&codes.includes(r.property))
       .sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)||a.property.localeCompare(b.property));
+
     const detail=rows.map(r=>({
-      'Stay Month':month,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
-      'Upload Date':r.snapshot_date,'Room Nights on the Books':+r.ty_rooms_sold||0,
+      'Stay Month':month,
+      'Property':props[r.property]?.name||r.property,
+      'Upload Date':r.snapshot_date,
+      'Room Nights on the Books':+r.ty_rooms_sold||0,
       'Room Night Capacity':(props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no),
-      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))):null
+      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))
+        ?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no)))
+        :null
     }));
-    return {title:`Pace History - ${reportMonthLabel(month)}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
+
+    return {
+      title:`Pace History - ${reportMonthLabel(month)}`,
+      rows:detail,
+      headers:['Stay Month','Property','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],
+      note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'
+    };
   }
+
   if(type==='monthly'){
     const source=S.adr.filter(r=>`${r.year}-${pad(r.month)}`===month&&codes.includes(r.property));
     const grouped=new Map();
+
     source.forEach(r=>{
       const x=grouped.get(r.property)||{property:r.property,sold:0,revenue:0,available:0};
-      x.sold+=+r.rooms_sold||0; x.revenue+=+r.room_revenue||0; x.available+=+r.rooms_available||0; grouped.set(r.property,x);
+      x.sold+=+r.rooms_sold||0;
+      x.revenue+=+r.room_revenue||0;
+      x.available+=+r.rooms_available||0;
+      grouped.set(r.property,x);
     });
+
     const rows=[...grouped.values()].map(x=>({
-      'Property':props[x.property]?.name||x.property,'Property Code':x.property,
-      'Room Nights Sold':x.sold,'Room Revenue':x.revenue,'Available Room Nights':x.available,
-      'Occupancy':x.available?x.sold/x.available:null,'ADR':x.sold?x.revenue/x.sold:null,'RevPAR':x.available?x.revenue/x.available:null
+      'Property':props[x.property]?.name||x.property,
+      'Room Nights Sold':x.sold,
+      'Room Revenue':x.revenue,
+      'Available Room Nights':x.available,
+      'Occupancy':x.available?x.sold/x.available:null,
+      'ADR':x.sold?x.revenue/x.sold:null,
+      'RevPAR':x.available?x.revenue/x.available:null
     })).sort((a,b)=>a.Property.localeCompare(b.Property));
-    return {title:`Monthly Performance - ${reportMonthLabel(month)}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
+
+    return {
+      title:`Monthly Performance - ${reportMonthLabel(month)}`,
+      rows,
+      headers:['Property','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],
+      note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'
+    };
   }
+
   if(type==='reservations'){
     const rows=S.res.filter(r=>String(r.check_in||'').slice(0,7)===month&&codes.includes(r.property))
       .sort((a,b)=>String(a.check_in||'').localeCompare(String(b.check_in||'')));
+
     const data=rows.map(r=>({
-      'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
-      'Guest Name':r.guest_name||'','Room Type':r.room_type||'','Check-in':r.check_in||'','Check-out':r.check_out||'',
-      'Room Nights':+r.room_nights||0,'Revenue':+r.grand_total||0,'Status':r.status||'','Source':r.source||''
+      'Reservation Number':r.reservation_no||'',
+      'Property':props[r.property]?.name||r.property,
+      'Guest Name':r.guest_name||'',
+      'Room Type':r.room_type||'',
+      'Check-in':r.check_in||'',
+      'Check-out':r.check_out||'',
+      'Room Nights':+r.room_nights||0,
+      'Revenue':+r.grand_total||0,
+      'Status':r.status||'',
+      'Source':r.source||''
     }));
-    return {title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
+
+    return {
+      title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,
+      rows:data,
+      headers:['Reservation Number','Property','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],
+      note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'
+    };
   }
+
   const reservationByKey=new Map();
+
   S.res.forEach(r=>{
     const key=[r.property,String(r.reservation_no||r.reservation_id||'')].join('|');
     if(key!=='|') reservationByKey.set(key,r);
   });
+
   const rows=S.cancellations.filter(r=>String(r.cancellation_date||'').slice(0,7)===month&&codes.includes(r.property))
     .sort((a,b)=>String(a.cancellation_date||'').localeCompare(String(b.cancellation_date||'')));
+
   const data=rows.map(r=>{
     const reservation=reservationByKey.get([r.property,String(r.reservation_no||r.reservation_id||'')].join('|'))||{};
+
     const checkIn=String(r.check_in||r.arrival_date||r.stay_start||r.start_date||reservation.check_in||'').slice(0,10);
     const checkOut=String(r.check_out||r.departure_date||r.stay_end||r.end_date||reservation.check_out||'').slice(0,10);
+
     const daysBefore=checkIn&&r.cancellation_date
       ? Math.round((Date.parse(checkIn+'T00:00:00Z')-Date.parse(r.cancellation_date+'T00:00:00Z'))/86400000)
       : null;
+
     const stayNights=checkIn&&checkOut
       ? Math.max(0,Math.round((Date.parse(checkOut+'T00:00:00Z')-Date.parse(checkIn+'T00:00:00Z'))/86400000))
       : (+r.room_nights||+reservation.room_nights||0);
+
     return {
-      'Reservation Number':r.reservation_no||r.reservation_id||'','Guest Name':r.guest_name||r.guest_full_name||r.name||reservation.guest_name||reservation.guest_full_name||reservation.name||'',
-      'Property':props[r.property]?.name||r.property,'Property Code':r.property,
-      'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'',
-      'Check-in':checkIn,'Check-out':checkOut,'Days Before Check-in':daysBefore,
-      'Stay Nights':stayNights,'Source':r.source||reservation.source||'',
+      'Reservation Number':r.reservation_no||r.reservation_id||'',
+      'Guest Name':r.guest_name||r.guest_full_name||r.name||reservation.guest_name||reservation.guest_full_name||reservation.name||'',
+      'Property':props[r.property]?.name||r.property,
+      'Cancellation Date':r.cancellation_date||'',
+      'Booking Date':r.booking_date||'',
+      'Check-in':checkIn,
+      'Check-out':checkOut,
+      'Days Before Check-in':daysBefore,
+      'Stay Nights':stayNights,
+      'Source':r.source||reservation.source||'',
       'Room Nights':+r.room_nights||+reservation.room_nights||0,
       'Original Room Revenue':+(r.room_revenue_total||0)
     };
   });
-  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
+
+  return {
+    title:`Cancellations Register - ${reportMonthLabel(month)}`,
+    rows:data,
+    headers:['Reservation Number','Guest Name','Property','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],
+    note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'
+  };
 }
+
 function reportNumber(value, digits=2){
   if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
   return Number(value).toLocaleString('en-PH',{minimumFractionDigits:digits,maximumFractionDigits:digits});
