@@ -372,6 +372,20 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .pie-dot{width:10px;height:10px;border-radius:50%}.pie-legend-item small{color:var(--muted,#64748b);min-width:48px;text-align:right}
 @media(max-width:600px){.channel-pie{width:160px;height:160px;flex-basis:160px}.channel-pie-hole{width:96px;height:96px}}
 
+
+.year-filter{display:inline-flex;align-items:center;gap:9px;border:1px solid #d4e0e4;border-radius:24px;background:#fff;padding:0 13px;height:44px;color:var(--muted,#637d87);font-size:14px}
+.year-filter select{border:0;background:transparent;color:var(--ink,#102b35);font:inherit;font-weight:600;outline:none;min-width:94px;cursor:pointer}
+\n
+.direct-source-details{min-width:220px}
+.direct-source-details summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.direct-source-details summary::-webkit-details-marker{display:none}
+.direct-source-details summary:before{content:'▸';color:#147d86;font-size:13px}
+.direct-source-details[open] summary:before{content:'▾'}
+.direct-source-details summary small{display:block;color:#718096;font-size:11px;font-weight:400}
+.direct-source-list{padding:8px 0 4px 16px;min-width:650px}
+.direct-source-list table{font-size:12px}
+.direct-source-list th,.direct-source-list td{padding:6px 8px}
+
 </style>
 </head>
 <body>
@@ -771,6 +785,11 @@ function sharedPropertyFilter(){
 }
 
 /* Shared property selection helpers */
+function bookingYearFilter(){
+  const years=[...new Set(S.res.map(r=>String(r.booking_date||'').slice(0,4)).filter(y=>/^\\d{4}$/.test(y)))].sort((a,b)=>b.localeCompare(a));
+  const selected=S.f.yr||'ALL';
+  return `<label class="year-filter"><span>Booking year</span><select data-year-filter><option value="ALL"${selected==='ALL'?' selected':''}>All years</option>${years.map(y=>`<option value="${y}"${selected===y?' selected':''}>${y}</option>`).join('')}</select></label>`;
+}
 const selectedCodes = () => S.selectedProps === null
   ? S.props.map(p => p.code)
   : S.selectedProps;
@@ -1282,7 +1301,7 @@ function res(){
   $('#ttl').textContent = 'Reservations';
   const f=S.f; f.st??='ALL'; f.sr??='ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
-  const rs = S.res.filter(r => selectedCodes().includes(r.property) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin) && inR(r.check_out,g.cout) && (f.st==='ALL'||r.status===f.st) && (f.sr==='ALL'||r.source_category===f.sr));
+  const rs = S.res.filter(r => selectedCodes().includes(r.property) && (f.yr==='ALL'||!f.yr||String(r.booking_date||'').slice(0,4)===f.yr) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin) && inR(r.check_out,g.cout) && (f.st==='ALL'||r.status===f.st) && (f.sr==='ALL'||r.source_category===f.sr));
   const Cn = r => r.status==='Cancelled', sum = (a,k) => a.reduce((s,r)=>s+(+r[k]||0),0);
   const st = a => { const c=a.filter(Cn); return {n:a.length,c:c.length,nt:sum(a,'room_nights'),cn:sum(c,'room_nights'),rev:sum(a.filter(r=>!Cn(r)),'grand_total'),lost:sum(c,'suggested_deposit')}; };
   const line = (l,s) => [l,fmt(s.n),fmt(s.c),pct(s.n?s.c/s.n:NaN),fmt(s.nt),fmt(s.cn),php(s.rev),php(s.lost)];
@@ -1293,16 +1312,16 @@ function res(){
   const stats = [...new Set(S.res.map(r=>r.status).filter(Boolean))], srcs = [...new Set(S.res.map(r=>r.source_category).filter(Boolean))];
   const byP = S.props.map(p => [p.name, st(rs.filter(r=>r.property===p.code))]).filter(x=>x[1].n);
   const ota = rs.filter(r=>r.source_category==='OTA').length;
-  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${chip('cout','Check-out date')}${spill('st','Status',[['ALL','All'],...stats.map(x=>[x,x])],f.st)}${spill('sr','Source',[['ALL','All'],...srcs.map(x=>[x,x])],f.sr)}<button class="rst" data-a="rs">Reset filters</button></div>
+  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${bookingYearFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${chip('cout','Check-out date')}${spill('st','Status',[['ALL','All'],...stats.map(x=>[x,x])],f.st)}${spill('sr','Source',[['ALL','All'],...srcs.map(x=>[x,x])],f.sr)}<button class="rst" data-a="rs">Reset filters</button></div>
   <p class="note" style="margin:-6px 0 16px">Showing ${fmt(rs.length)} reservations: ${parts.join(' · ')}. Every number on this page follows these filters.</p>
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
   <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div></div>
-  ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
   <div class="p res-scroll-card"><h3>By booking date</h3><div class="res-table-scroll">${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}</div>
   <p class="note">OTA ${fmt(ota)} (${pct(rs.length?ota/rs.length:NaN)}) · Direct ${fmt(rs.filter(r=>r.source_category==='Direct').length)}</p></div></div>
+  ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Guest name','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.guest_name||'–',r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
   bind(['st','sr','bm'], res);
 }
@@ -1315,18 +1334,16 @@ function cancel(){
   const f = S.f; f.cp ??= 'ALL'; f.cs ??= 'ALL';
   const inR = (v,r) => !r || (v && v>=r.s && v<=r.e), g = S.rg;
   const normalizeSource = x => {
-  const s = srcN(x);
-  const k = s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const aliases = {
-    elnidogo: 'El Nido Go',
-    affiliated: 'Affiliated',
-    potentialinvestor: 'Potential & Investors',
-    potentialinvestors: 'Potential & Investors'
+    const raw=srcN(x), k=raw.toLowerCase().replace(/[^a-z0-9]/g,'');
+    const aliases={elnidogo:'El Nido Go',potentialinvestor:'Potential & Investors',potentialinvestors:'Potential & Investors',
+      website:'Website / Booking Engine',websitebookingengine:'Website / Booking Engine',bookingengine:'Website / Booking Engine',
+      walkin:'Walk-In',phone:'Phone',telephone:'Phone',directnonvat:'Direct - Non VAT',directtanonvat:'Direct - Non VAT',
+      foc:'Rooms - Free of Charge',roomfoc:'Rooms - Free of Charge',roomsfoc:'Rooms - Free of Charge',
+      roomsfreeofcharge:'Rooms - Free of Charge',roomfreeofcharge:'Rooms - Free of Charge'};
+    return aliases[k]||raw;
   };
-  return aliases[k] || s;
-};
 const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
-  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||r.src===f.cs) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
+  const rs = all.filter(r => selectedCodes().includes(r.property) && (f.yr==='ALL'||!f.yr||String(r.booking_date||'').slice(0,4)===f.yr) && (f.cp==='ALL'||r.property===f.cp) && (f.cs==='ALL'||(f.cs==='Direct'?channelGroup(r.src)==='Direct':f.cs==='OTA'?channelGroup(r.src)==='OTA':f.cs==='El Nido Go'?channelGroup(r.src)==='El Nido Go':f.cs==='Other / Special'?channelGroup(r.src)==='Other / Special':r.src===f.cs)) && inR(r.booking_date,g.book) && inR(r.check_in,g.cin));
   const lead = r => r.check_in && r.booking_date ? Math.max(0, Math.round((new Date(r.check_in)-new Date(r.booking_date))/864e5)) : null;
   const Cn = r => r.status==='Cancelled', lost = r => +r.suggested_deposit||0;
   const sum = (a,fn) => a.reduce((s,r)=>s+fn(r),0), avg = a => a.length ? sum(a,x=>x)/a.length : NaN;
@@ -1349,16 +1366,23 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m); };
   const channelGroup = source => {
     const k=String(source||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    if(['bookingcom','agoda','priceline','agodapriceline','expedia','ctrip','tripcom','ctriptripcom','airbnb','airbnbapi'].some(x=>k.includes(x))) return 'OTA';
-    if(['websitebookingengine','website','bookingengine','walkin','email','phone','telephone','direct'].some(x=>k.includes(x))) return 'Direct';
-    if(['travelagency','travelagent','affiliated'].some(x=>k.includes(x))) return 'Travel Trade / Agency';
+    if(k==='elnidogo') return 'El Nido Go';
+    if(['bookingcom','agoda','priceline','agodapriceline','expedia','ctrip','tripcom','ctriptripcom','airbnb','airbnbapi','klook'].some(x=>k.includes(x))) return 'OTA';
+    if(['websitebookingengine','website','bookingengine','walkin','email','phone','telephone','direct','directnonvat','directtanonvat','roomsfreeofcharge','roomfreeofcharge','foc','roomfoc','roomsfoc','travelagency','travelagent','affiliated','government','potentialinvestor','potentialinvestors'].some(x=>k.includes(x))) return 'Direct';
     return 'Other / Special';
   };
-  const groupOrder=['OTA','Direct','Travel Trade / Agency','Other / Special'];
+  const groupOrder=['OTA','Direct','El Nido Go','Other / Special'];
   const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r.src)===name)]).filter(([,a])=>a.length);
   const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
-  const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost)).map(([n,a])=>row(n,a));
-  const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
+  const sourceGroups=grp(r=>r.src);
+  const directSources=sourceGroups.filter(([name])=>channelGroup(name)==='Direct').sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost));
+  const nonDirectSources=sourceGroups.filter(([name])=>channelGroup(name)!=='Direct').sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost));
+  const directAll=directSources.flatMap(([,a])=>a);
+  const directDetailRows=directSources.map(([name,a])=>row(name,a));
+  const sourceTableRows=[
+    ...(directAll.length?[[`<details class="direct-source-details"><summary><b>Direct</b><small>${fmt(directSources.length)} source types · ${fmt(directAll.length)} bookings</small></summary><div class="direct-source-list">${tbl(['Direct booking source','Bookings','Cancelled','Cancel rate','Cancelled booking value','Average cancelled value','Average window'],directDetailRows)}</div></details>`,...row('',directAll).slice(1)]]:[]),
+    ...nonDirectSources.map(([name,a])=>row(name,a))
+  ];
   const piePalette=['#147d86','#e0a23b','#5279a5','#8b6aa8'];
   let pieCursor=0;
   const pieSegments=groupedChannels.map(([name,a],i)=>{
@@ -1375,12 +1399,11 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const maxM = Math.max(1, ...srcList.flatMap(s=>WIN.map(w=>mcount(s,w[0]))));
   const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>r.src===s).length}</b>`]);
   const top = [...cx].sort((a,b)=>lost(b)-lost(a)).slice(0,10).map(r=>[S.pm[r.property]?.name||r.property,r.src,r.room_type&&r.room_type!=='-'?r.room_type:'–',r.booking_date?fd(r.booking_date):'–',r.check_in?fd(r.check_in):'–',lead(r)==null?'–':lead(r)+' days',fmt(r.room_nights),`<span class="dn">${php(lost(r))}</span>`]);
-  const srcOpts = [['ALL','All'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
+  const srcOpts = [['ALL','All'],['Direct','Direct'],['OTA','OTA'],['El Nido Go','El Nido Go'],['Other / Special','Other / Special'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
   const H = ['','Bookings','Cancelled','Cancel rate','Cancelled booking value','Average cancelled value','Average window'];
-  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
+  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${bookingYearFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
   <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Cancelled booking value is based on Suggested Deposit, since cancelled bookings show a Grand Total of 0; it is not confirmed actual revenue loss. The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
   ${cards}
-  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
   <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Cancelled booking value','Average cancelled value'],winRows)}</div>
   <div class="p"><h3>Cancelled bookings by channel group</h3>
     <div class="channel-pie-wrap">
@@ -1391,10 +1414,11 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
     </div>
     ${tbl(H.map((x,i)=>i?x:'Channel group'),groupRows)}
   </div>
-  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),srcs)}</div>
+  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),sourceTableRows)}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
-  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
-  bind(['cp','cs','cm','cg'], cancel);
+  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>
+  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
+`;  bind(['cp','cs','cm','cg'], cancel);
 }
 
 function showUploadConfirm(message){
@@ -1648,7 +1672,7 @@ const A = {
   next: () => { const p=S.pk; if (++p.vm>11){ p.vm=0; p.vy++; } },
   no: () => { S.pk.open=null; },
   ok: () => { const p=S.pk; if (!p.ds) return; S.rg[p.open]={s:p.ds,e:p.de||p.ds}; p.open=null; },
-  rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; S.f.cg='book'; S.dd=null; },
+  rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; S.f.yr='ALL'; S.f.cg='book'; S.dd=null; },
   po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; }, rptExport: () => exportReportExcel(), rptCSV: () => exportReportCSV(),
   dd: v => { const [kind,d,c]=v.split(':'); S.dd={kind,d:+d,c}; }, ddx: () => { S.dd=null; },
   us: async id => {
@@ -1667,6 +1691,7 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('change', e => {
+  if(e.target.matches('[data-year-filter]')){ S.f.yr=e.target.value; show(S.view); return; }
   if(e.target.matches('[data-prop-check]')){
     const code=e.target.dataset.propCheck;
     S.draftProps=S.draftProps??(S.selectedProps===null?S.props.map(p=>p.code):[...S.selectedProps]);
