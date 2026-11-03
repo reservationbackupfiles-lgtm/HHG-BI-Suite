@@ -1108,7 +1108,7 @@ function buildReportData(){
     const rows=[...grouped.values()].map(x=>({
       'Property':props[x.property]?.name||x.property,
       'Room Nights Sold':x.sold,
-      'Room Revenue':x.revenue,
+      'Room Revenue':Math.round(x.revenue*100)/100,
       'Available Room Nights':x.available,
       'Occupancy':x.available?x.sold/x.available:null,
       'ADR':x.sold?x.revenue/x.sold:null,
