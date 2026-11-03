@@ -674,13 +674,13 @@ async function load(){
     const adrPace = rawAdrHistory.map(r=>{
       const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
-      return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&/^\d{4}-\d{2}-\d{2}$/.test(r.stay_date)&&/^\d{4}-\d{2}-\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
+      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
     const snapshotPace = rawPace.map(r=>{
-      const stay=String(r.stay_date||''), snap=String(r.snapshot_date||'');
-      const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
-      return {property,stay_date:stay,stay_month:stay.slice(0,7),snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
-    }).filter(r=>r.property&&/^\d{4}-\d{2}-\d{2}$/.test(r.stay_date)&&/^\d{4}-\d{2}-\d{2}$/.test(r.snapshot_date)&&r.year_no&&r.month_no);
+      const d=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)], year_no=+d.slice(0,4), month_no=+d.slice(5,7);
+      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
     // Merge both history sources. adr_history is preferred for duplicate keys,
     // but pace_snapshots must still contribute months missing from adr_history.
     const paceByKey = new Map();
@@ -983,118 +983,44 @@ function compare(){
   mk('#c0','line',MN,[y-1,y,y+1].map((v,i)=>({...ds(v,ser[i],[C2,C1,C3][i]),tension:.25,borderDash:i===2?[6,5]:[]})),mfmt);
 }
 
-/* Pace: selected stay month, with calendar-day columns representing ADR upload dates */
+/* Pace: room nights on the books for a month, one column per upload day */
 function pace(){
   $('#ttl').textContent = 'Pace';
-  if (!S.pace.length) return empty('No ADR Pace history yet. Upload ADR reports daily to build the booking pace history.');
-
-  const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||''));
-  const allSnapshots = [...new Set(S.pace.map(r=>String(r.snapshot_date||'')).filter(validDate))].sort();
-  if (!allSnapshots.length) return empty('No valid ADR upload dates were found in Pace history.');
-
-  const latest = allSnapshots.at(-1);
-  const [uploadYear, uploadMonth, latestDay] = latest.split('-').map(Number);
-  const stayMonth = new Date(uploadYear, uploadMonth - 1 + S.po, 1);
-  const stayYear = stayMonth.getFullYear();
-  const stayMonthNo = stayMonth.getMonth() + 1;
-  const stayKey = `${stayYear}-${pad(stayMonthNo)}`;
-  const stayDays = dim(stayYear, stayMonthNo);
-  const uploadMonthDays = dim(uploadYear, uploadMonth);
-  const visibleDays = Math.min(stayDays, uploadMonthDays);
-
-  const selected = selectedCodes();
-  const cs = S.props.filter(p=>selected.includes(p.code));
-  const valueMap = new Map();
-  const snapshotByDay = new Map();
-
-  S.pace.forEach(r=>{
-    const snap = String(r.snapshot_date||'');
-    if (!validDate(snap)) return;
-    const [sy, sm] = snap.slice(0,7).split('-').map(Number);
-    const rowStayKey = String(r.stay_month || r.stay_date || `${r.year_no}-${pad(r.month_no)}`).slice(0,7);
-    if (rowStayKey !== stayKey) return;
-    const code = r.property;
-    if (!code) return;
-    const day = +snap.slice(8,10);
-    valueMap.set(`${code}|${snap}`, +r.ty_rooms_sold || 0);
-    snapshotByDay.set(day, snap);
-  });
-
-  const snapshotsThroughLatest = allSnapshots.filter(d=>d.slice(0,7)===latest.slice(0,7) && +d.slice(8,10)<=latestDay);
-  const previousSnapshot = snapshotsThroughLatest.length > 1 ? snapshotsThroughLatest.at(-2) : null;
-  const getValue = (code, snap) => valueMap.has(`${code}|${snap}`) ? valueMap.get(`${code}|${snap}`) : null;
-  const uploadDateForDay = day => `${latest.slice(0,7)}-${pad(day)}`;
-
-  const cell = (code, day, capacity) => {
-    if (day > visibleDays) return '<td></td>';
-    const snap = uploadDateForDay(day);
-    if (day > latestDay) return '<td></td>';
-    if (!allSnapshots.includes(snap)) return '<td class="no"><small>no upload</small></td>';
-    const v = getValue(code, snap);
-    if (v === null) return '<td class="no"><small>—</small></td>';
-    const prior = [...snapshotsThroughLatest].filter(d=>d<snap).reverse().find(d=>getValue(code,d)!==null);
-    if (!prior) return `<td${day===latestDay?' class="now"':''}><b>${fmt(v)}</b><small>${pct(capacity?v/capacity:NaN)}</small></td>`;
-    const delta = v - getValue(code, prior);
-    const cls = delta > 0 ? 'up' : delta < 0 ? 'dn' : 'mu';
-    const sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
-    return `<td${day===latestDay?' class="now"':''}><b>${fmt(v)}</b><small class="${cls}">${sign}${fmt(Math.abs(delta))} · ${pct(capacity?v/capacity:NaN)}</small></td>`;
+  if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
+  const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
+  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
+  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(ty,mo), iso = d => `${y}-${pad(m)}-${pad(d)}`;
+  const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
+  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
+  const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
+  const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
+  const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
+  const TA = cs.reduce((s,p)=>s+cap(p.code),0);
+  const cell = (i,v,a) => i+1>ld ? '<td></td>' : v==null ? '<td class="no"><small>no upload</small></td>' : `<td${i+1===ld?' class="now"':''}><b>${fmt(v)}</b><small>${pct(a?v/a:NaN)}</small></td>`;
+  const add = (arr,i) => {
+    if (i+1>ld) return '<td></td>'; const v=arr[i]; if (v==null) return '<td class="no"></td>';
+    let p=null; for (let j=i-1;j>=0;j--) if (arr[j]!=null){ p=arr[j]; break; }
+    if (p==null) return '<td><span class="mu">–</span></td>';
+    const d=v-p, c=d>0?'up':d<0?'dn':'mu', sg=d>0?'+':d<0?'−':'';
+    return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
   };
-
-  const capacityFor = p => (p.total_rooms || 0) * stayDays;
-  const days = Array.from({length:stayDays},(_,i)=>i+1);
-  const head = `<tr><th class="f">Hotel</th>${days.map(day=>{
-    const dt = new Date(stayYear, stayMonthNo-1, day);
-    const active = day===latestDay;
-    return `<th${active?' class="now"':''}>${MN[stayMonthNo-1]} ${day}<br><small>${WD[dt.getDay()]}</small></th>`;
-  }).join('')}</tr>`;
-
-  let body = cs.map(p=>{
-    const cap = capacityFor(p);
-    return `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms||0} rooms · ${fmt(cap)} room nights</small></td>${days.map(day=>cell(p.code,day,cap)).join('')}</tr>`;
-  }).join('');
-
-  const totalCells = days.map(day=>{
-    if (day > visibleDays || day > latestDay) return '<td></td>';
-    const snap = uploadDateForDay(day);
-    if (!allSnapshots.includes(snap)) return '<td class="no"><small>no upload</small></td>';
-    const vals = cs.map(p=>getValue(p.code,snap)).filter(v=>v!==null);
-    if (!vals.length) return '<td class="no"><small>—</small></td>';
-    const total = vals.reduce((a,b)=>a+b,0);
-    const prior = [...snapshotsThroughLatest].filter(d=>d<snap && cs.some(p=>getValue(p.code,d)!==null)).reverse().find(d=>true);
-    if (!prior) return `<td${day===latestDay?' class="now"':''}><b>${fmt(total)}</b></td>`;
-    const priorTotal = cs.reduce((sum,p)=>sum+(getValue(p.code,prior)??0),0);
-    const delta = total-priorTotal, cls=delta>0?'up':delta<0?'dn':'mu', sign=delta>0?'+':delta<0?'−':'';
-    return `<td${day===latestDay?' class="now"':''}><b>${fmt(total)}</b><small class="${cls}">${sign}${fmt(Math.abs(delta))}</small></td>`;
-  }).join('');
-
-  body += `<tr class="tr"><td class="f"><b>All hotels</b><small>Combined OTB room nights</small></td>${totalCells}</tr>`;
-
-  const latestTotal = cs.reduce((sum,p)=>sum+(getValue(p.code,latest)??0),0);
-  const previousTotal = previousSnapshot ? cs.reduce((sum,p)=>sum+(getValue(p.code,previousSnapshot)??0),0) : null;
-  const hasLatest = cs.some(p=>getValue(p.code,latest)!==null);
-  const net = previousTotal===null || !hasLatest ? null : latestTotal-previousTotal;
-  const totalCapacity = cs.reduce((sum,p)=>sum+capacityFor(p),0);
-  const occupancy = totalCapacity ? latestTotal/totalCapacity : 0;
-  const uploadedDays = new Set(snapshotsThroughLatest.map(d=>+d.slice(8,10)));
-  const missing = Math.max(0,latestDay-uploadedDays.size);
-
-  const tabs = [-1,0,1,2,3,4].map(offset=>{
-    const dt = new Date(uploadYear,uploadMonth-1+offset,1);
-    const label = offset===-1?'Last month':offset===0?'This month':`${offset*30} days`;
-    return `<button class="tab${S.po===offset?' on':''}" data-a="po:${offset}">${label} · ${MN[dt.getMonth()]}</button>`;
-  }).join('');
-
-  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div>
-  <div class="cards">
-   <div class="c"><small>Room nights on the books</small><b>${hasLatest?fmt(latestTotal):'—'}</b><i>latest upload: ${latest}</i></div>
-   <div class="c"><small>Occupancy for the month</small><b>${hasLatest?(occupancy*100).toFixed(1)+'%':'—'}</b><i>of ${fmt(totalCapacity)} room nights</i></div>
-   <div class="c"><small>Added since the previous upload</small><b class="${net===null?'mu':net>0?'up':net<0?'dn':'mu'}">${net===null?'—':(net>0?'+':net<0?'−':'')+fmt(Math.abs(net))}</b><i>${previousSnapshot?`vs ${previousSnapshot}`:'awaiting previous upload'}</i></div>
-   <div class="c"><small>Missing uploads</small><b class="${missing?'dn':''}">${fmt(missing)}</b><i>days with no file this month</i></div>
-  </div>
-  <div class="p"><h3>Room nights on the books for ${MN[stayMonthNo-1]} ${stayYear}, by upload day</h3>
-  <div class="daygrid-scroll"><table class="dd">${head}${body}</table></div>
-  <p class="note"><b>How to read:</b> Columns show the selected stay month dates (e.g. Dec 1, Dec 2, Dec 3). Each column uses the ADR report uploaded on the matching day of the current upload month (e.g. Nov 1 upload → Dec 1 column). The value is Accommodations Booked for the selected stay month. The smaller figure shows net movement versus the previous available upload. Future dates remain blank; missing uploads are not treated as zero.</p></div>`;
+  const days = Array.from({length:nd},(_,i)=>i);
+  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[mo-1]} ${i+1}<br>${WD[new Date(ty,mo-1,i+1).getDay()]}</th>`).join('')}</tr>`;
+  let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
+  body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
+  body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
+  body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
+  const latestColumn=Math.min(ld,nd), t=tot[latestColumn-1], pr=[...tot.slice(0,latestColumn-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=Math.min(ld,nd)&&tot[i]==null).length;
+  const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
+  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
+   <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
+   <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
+   <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
+   <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
+  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
+  <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
 }
+
 /* Day grid (bookings received / cancelled): rows = days, columns = hotels. Click a number for the bookings behind it. */
 const sm = (x,k) => x.reduce((s,r)=>s+(+r[k]||0),0);
 function dayGrid(a, o){
