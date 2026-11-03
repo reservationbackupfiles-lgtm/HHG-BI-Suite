@@ -362,6 +362,16 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 }
 
 .pickup-card{margin-top:14px}.pickup-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.pickup-head h3{margin:0}.pickup-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pickup-tabs{display:flex;gap:2px;padding:3px;background:#F2F5F6;border:1px solid var(--line);border-radius:9px}.pickup-tabs button{border:0;background:transparent;color:var(--mut);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}.pickup-tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px #10242b18}.pickup-chart{height:290px;margin-top:10px}.pickup-summary{display:flex;gap:22px;flex-wrap:wrap;padding-top:10px;font-size:13px}.pickup-summary span,.pickup-summary b{font-weight:700}.pickup-card .note{margin-bottom:0}@media(max-width:700px){.pickup-chart{height:260px}.pickup-controls{width:100%}.pickup-tabs{max-width:100%;overflow:auto}.pickup-tabs button{padding:6px 8px}}
+
+.channel-pie-wrap{display:flex;align-items:center;gap:30px;flex-wrap:wrap;padding:14px 0 18px}
+.channel-pie{width:190px;height:190px;border-radius:50%;display:grid;place-items:center;flex:0 0 190px}
+.channel-pie-hole{width:112px;height:112px;border-radius:50%;background:var(--card,#fff);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.channel-pie-hole b{font-size:23px}.channel-pie-hole small{color:var(--muted,#64748b)}
+.channel-pie-legend{display:grid;gap:12px;min-width:220px}
+.pie-legend-item{display:grid;grid-template-columns:12px minmax(130px,1fr) auto auto;align-items:center;gap:9px}
+.pie-dot{width:10px;height:10px;border-radius:50%}.pie-legend-item small{color:var(--muted,#64748b);min-width:48px;text-align:right}
+@media(max-width:600px){.channel-pie{width:160px;height:160px;flex-basis:160px}.channel-pie-hole{width:96px;height:96px}}
+
 </style>
 </head>
 <body>
@@ -1337,9 +1347,29 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const row = (name,a) => { const c=a.filter(Cn), v=sum(c,lost);
     return [name,fmt(a.length),fmt(c.length),`${pct(a.length?c.length/a.length:NaN)}<span class="bx" style="width:${a.length?c.length/a.length*160:0}px"></span>`,php(v),c.length?php(v/c.length):'–',c.length?Math.round(avgW(c))+' days':'–']; };
   const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m); };
-  const cats = grp(r=>r.source_category||'–').map(([n,a])=>row(`<b>${n}</b>`,a));
+  const channelGroup = source => {
+    const k=String(source||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(['bookingcom','agoda','priceline','agodapriceline','expedia','ctrip','tripcom','ctriptripcom','airbnb','airbnbapi'].some(x=>k.includes(x))) return 'OTA';
+    if(['websitebookingengine','website','bookingengine','walkin','email','phone','telephone','direct'].some(x=>k.includes(x))) return 'Direct';
+    if(['travelagency','travelagent','affiliated'].some(x=>k.includes(x))) return 'Travel Trade / Agency';
+    return 'Other / Special';
+  };
+  const groupOrder=['OTA','Direct','Travel Trade / Agency','Other / Special'];
+  const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r.src)===name)]).filter(([,a])=>a.length);
+  const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
   const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost)).map(([n,a])=>row(n,a));
   const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
+  const piePalette=['#147d86','#e0a23b','#5279a5','#8b6aa8'];
+  let pieCursor=0;
+  const pieSegments=groupedChannels.map(([name,a],i)=>{
+    const count=a.filter(Cn).length, pctValue=N?count/N*100:0;
+    const from=pieCursor; pieCursor+=pctValue;
+    return {name,count,pct:pctValue,color:piePalette[i%piePalette.length],from,to:pieCursor};
+  }).filter(x=>x.count>0);
+  const pieBackground=pieSegments.length
+    ? `conic-gradient(${pieSegments.map(x=>`${x.color} ${x.from}% ${x.to}%`).join(',')})`
+    : '#e7edf0';
+  const pieLegend=pieSegments.map(x=>`<div class="pie-legend-item"><span class="pie-dot" style="background:${x.color}"></span><span>${x.name}</span><b>${fmt(x.count)}</b><small>${x.pct.toFixed(1)}%</small></div>`).join('');
   const cell = n => n ? `<div style="margin:-8px -10px;padding:8px 10px;background:rgba(14,124,134,${(0.12+0.45*n/maxM).toFixed(2)})"><b>${n}</b></div>` : '<span class="mu">–</span>';
   const mcount = (s,w) => cx.filter(r=>r.src===s && wname(r)===w).length;
   const maxM = Math.max(1, ...srcList.flatMap(s=>WIN.map(w=>mcount(s,w[0]))));
@@ -1352,7 +1382,16 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   ${cards}
   ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
   <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Cancelled booking value','Average cancelled value'],winRows)}</div>
-  <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
+  <div class="p"><h3>Cancelled bookings by channel group</h3>
+    <div class="channel-pie-wrap">
+      <div class="channel-pie" role="img" aria-label="Cancelled bookings by channel group" style="background:${pieBackground}">
+        <div class="channel-pie-hole"><b>${fmt(N)}</b><small>cancelled</small></div>
+      </div>
+      <div class="channel-pie-legend">${pieLegend||'<span class="mu">No cancelled bookings in the selected filters.</span>'}</div>
+    </div>
+    ${tbl(H.map((x,i)=>i?x:'Channel group'),groupRows)}
+  </div>
+  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),srcs)}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
   <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
   bind(['cp','cs','cm','cg'], cancel);
