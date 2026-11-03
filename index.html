@@ -1203,7 +1203,7 @@ function reportNumber(value, digits=2){
 function reportCell(value, header){
   if(value===null||value===undefined||value==='') return '—';
   if(header==='Occupancy on Books'||header==='Occupancy') return `${(Number(value)*100).toFixed(2)}%`;
-  if(header==='ADR'||header==='RevPAR') return reportNumber(value,2);
+  if(header==='Room Revenue'||header==='ADR'||header==='RevPAR') return reportNumber(value,2);
   return reportEsc(value);
 }
 function reports(){
@@ -1276,7 +1276,7 @@ function exportReportExcel(){
   const range=XLSX.utils.decode_range(ws['!ref']||'A1:A1');
   data.headers.forEach((header,col)=>{
     const fmt=header==='Occupancy'||header==='Occupancy on Books'?'0.00%':
-      (header==='ADR'||header==='RevPAR')?'#,##0.00':null;
+      (['Room Revenue','ADR','RevPAR'].includes(header))?'#,##0.00':null;
     if(!fmt)return;
     for(let row=1;row<=range.e.r;row++){
       const cell=ws[XLSX.utils.encode_cell({r:row,c:col})];
