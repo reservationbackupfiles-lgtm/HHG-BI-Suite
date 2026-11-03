@@ -989,7 +989,7 @@ function pace(){
   if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
   const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
   const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
-  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(ty,mo), iso = d => `${y}-${pad(m)}-${pad(d)}`;
+  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
   const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
   const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
   const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
@@ -1005,12 +1005,12 @@ function pace(){
     return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
   };
   const days = Array.from({length:nd},(_,i)=>i);
-  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[mo-1]} ${i+1}<br>${WD[new Date(ty,mo-1,i+1).getDay()]}</th>`).join('')}</tr>`;
+  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[m-1]} ${i+1}<br>${WD[new Date(y,m-1,i+1).getDay()]}</th>`).join('')}</tr>`;
   let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
   body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
   body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
   body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
-  const latestColumn=Math.min(ld,nd), t=tot[latestColumn-1], pr=[...tot.slice(0,latestColumn-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=Math.min(ld,nd)&&tot[i]==null).length;
+  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
   const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
    <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
@@ -1065,137 +1065,73 @@ const reportMonthLabel = m => {
   if(!/^\d{4}-\d{2}$/.test(m||'')) return 'Selected month';
   const [y,mo]=m.split('-').map(Number); return `${MN[mo-1]} ${y}`;
 };
-
 function buildReportData(){
   const month=S.reportMonth||today().slice(0,7), type=S.reportType||'pace', codes=selectedCodes();
   const props=Object.fromEntries(S.props.map(p=>[p.code,p]));
-
   if(type==='pace'){
     const rows=S.pace.filter(r=>r.year_no===+month.slice(0,4)&&r.month_no===+month.slice(5,7)&&codes.includes(r.property))
       .sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)||a.property.localeCompare(b.property));
-
     const detail=rows.map(r=>({
-      'Stay Month':month,
-      'Property':props[r.property]?.name||r.property,
-      'Upload Date':r.snapshot_date,
-      'Room Nights on the Books':+r.ty_rooms_sold||0,
+      'Stay Month':month,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Upload Date':r.snapshot_date,'Room Nights on the Books':+r.ty_rooms_sold||0,
       'Room Night Capacity':(props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no),
-      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))
-        ?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no)))
-        :null
+      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))):null
     }));
-
-    return {
-      title:`Pace History - ${reportMonthLabel(month)}`,
-      rows:detail,
-      headers:['Stay Month','Property','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],
-      note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'
-    };
+    return {title:`Pace History - ${reportMonthLabel(month)}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
   }
-
   if(type==='monthly'){
     const source=S.adr.filter(r=>`${r.year}-${pad(r.month)}`===month&&codes.includes(r.property));
     const grouped=new Map();
-
     source.forEach(r=>{
       const x=grouped.get(r.property)||{property:r.property,sold:0,revenue:0,available:0};
-      x.sold+=+r.rooms_sold||0;
-      x.revenue+=+r.room_revenue||0;
-      x.available+=+r.rooms_available||0;
-      grouped.set(r.property,x);
+      x.sold+=+r.rooms_sold||0; x.revenue+=+r.room_revenue||0; x.available+=+r.rooms_available||0; grouped.set(r.property,x);
     });
-
     const rows=[...grouped.values()].map(x=>({
-      'Property':props[x.property]?.name||x.property,
-      'Room Nights Sold':x.sold,
-      'Room Revenue':Math.round(x.revenue*100)/100,
-      'Available Room Nights':x.available,
-      'Occupancy':x.available?x.sold/x.available:null,
-      'ADR':x.sold?x.revenue/x.sold:null,
-      'RevPAR':x.available?x.revenue/x.available:null
+      'Property':props[x.property]?.name||x.property,'Property Code':x.property,
+      'Room Nights Sold':x.sold,'Room Revenue':x.revenue,'Available Room Nights':x.available,
+      'Occupancy':x.available?x.sold/x.available:null,'ADR':x.sold?x.revenue/x.sold:null,'RevPAR':x.available?x.revenue/x.available:null
     })).sort((a,b)=>a.Property.localeCompare(b.Property));
-
-    return {
-      title:`Monthly Performance - ${reportMonthLabel(month)}`,
-      rows,
-      headers:['Property','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],
-      note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'
-    };
+    return {title:`Monthly Performance - ${reportMonthLabel(month)}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
   }
-
   if(type==='reservations'){
     const rows=S.res.filter(r=>String(r.check_in||'').slice(0,7)===month&&codes.includes(r.property))
       .sort((a,b)=>String(a.check_in||'').localeCompare(String(b.check_in||'')));
-
     const data=rows.map(r=>({
-      'Reservation Number':r.reservation_no||'',
-      'Property':props[r.property]?.name||r.property,
-      'Guest Name':r.guest_name||'',
-      'Room Type':r.room_type||'',
-      'Check-in':r.check_in||'',
-      'Check-out':r.check_out||'',
-      'Room Nights':+r.room_nights||0,
-      'Revenue':+r.grand_total||0,
-      'Status':r.status||'',
-      'Source':r.source||''
+      'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Guest Name':r.guest_name||'','Room Type':r.room_type||'','Check-in':r.check_in||'','Check-out':r.check_out||'',
+      'Room Nights':+r.room_nights||0,'Revenue':+r.grand_total||0,'Status':r.status||'','Source':r.source||''
     }));
-
-    return {
-      title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,
-      rows:data,
-      headers:['Reservation Number','Property','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],
-      note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'
-    };
+    return {title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
   }
-
   const reservationByKey=new Map();
-
   S.res.forEach(r=>{
     const key=[r.property,String(r.reservation_no||r.reservation_id||'')].join('|');
     if(key!=='|') reservationByKey.set(key,r);
   });
-
   const rows=S.cancellations.filter(r=>String(r.cancellation_date||'').slice(0,7)===month&&codes.includes(r.property))
     .sort((a,b)=>String(a.cancellation_date||'').localeCompare(String(b.cancellation_date||'')));
-
   const data=rows.map(r=>{
     const reservation=reservationByKey.get([r.property,String(r.reservation_no||r.reservation_id||'')].join('|'))||{};
-
     const checkIn=String(r.check_in||r.arrival_date||r.stay_start||r.start_date||reservation.check_in||'').slice(0,10);
     const checkOut=String(r.check_out||r.departure_date||r.stay_end||r.end_date||reservation.check_out||'').slice(0,10);
-
     const daysBefore=checkIn&&r.cancellation_date
       ? Math.round((Date.parse(checkIn+'T00:00:00Z')-Date.parse(r.cancellation_date+'T00:00:00Z'))/86400000)
       : null;
-
     const stayNights=checkIn&&checkOut
       ? Math.max(0,Math.round((Date.parse(checkOut+'T00:00:00Z')-Date.parse(checkIn+'T00:00:00Z'))/86400000))
       : (+r.room_nights||+reservation.room_nights||0);
-
     return {
-      'Reservation Number':r.reservation_no||r.reservation_id||'',
-      'Guest Name':r.guest_name||r.guest_full_name||r.name||reservation.guest_name||reservation.guest_full_name||reservation.name||'',
-      'Property':props[r.property]?.name||r.property,
-      'Cancellation Date':r.cancellation_date||'',
-      'Booking Date':r.booking_date||'',
-      'Check-in':checkIn,
-      'Check-out':checkOut,
-      'Days Before Check-in':daysBefore,
-      'Stay Nights':stayNights,
-      'Source':r.source||reservation.source||'',
+      'Reservation Number':r.reservation_no||r.reservation_id||'','Guest Name':r.guest_name||r.guest_full_name||r.name||reservation.guest_name||reservation.guest_full_name||reservation.name||'',
+      'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'',
+      'Check-in':checkIn,'Check-out':checkOut,'Days Before Check-in':daysBefore,
+      'Stay Nights':stayNights,'Source':r.source||reservation.source||'',
       'Room Nights':+r.room_nights||+reservation.room_nights||0,
       'Original Room Revenue':+(r.room_revenue_total||0)
     };
   });
-
-  return {
-    title:`Cancellations Register - ${reportMonthLabel(month)}`,
-    rows:data,
-    headers:['Reservation Number','Guest Name','Property','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],
-    note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'
-  };
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
 }
-
 function reportNumber(value, digits=2){
   if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
   return Number(value).toLocaleString('en-PH',{minimumFractionDigits:digits,maximumFractionDigits:digits});
@@ -1203,7 +1139,7 @@ function reportNumber(value, digits=2){
 function reportCell(value, header){
   if(value===null||value===undefined||value==='') return '—';
   if(header==='Occupancy on Books'||header==='Occupancy') return `${(Number(value)*100).toFixed(2)}%`;
-  if(header==='Room Revenue'||header==='ADR'||header==='RevPAR') return reportNumber(value,2);
+  if(header==='ADR'||header==='RevPAR') return reportNumber(value,2);
   return reportEsc(value);
 }
 function reports(){
@@ -1276,7 +1212,7 @@ function exportReportExcel(){
   const range=XLSX.utils.decode_range(ws['!ref']||'A1:A1');
   data.headers.forEach((header,col)=>{
     const fmt=header==='Occupancy'||header==='Occupancy on Books'?'0.00%':
-      (['Room Revenue','ADR','RevPAR'].includes(header))?'#,##0.00':null;
+      (header==='ADR'||header==='RevPAR')?'#,##0.00':null;
     if(!fmt)return;
     for(let row=1;row<=range.e.r;row++){
       const cell=ws[XLSX.utils.encode_cell({r:row,c:col})];
@@ -1389,11 +1325,11 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const avgW = a => avg(a.map(lead).filter(x=>x!=null));
   const cards = `<div class="cards">
     <div class="c"><small>Cancelled bookings</small><b>${fmt(N)}</b><i>${pct(rs.length?N/rs.length:NaN)} of ${fmt(rs.length)} bookings</i></div>
-    <div class="c"><small>Revenue lost</small><b class="dn">${php(L)}</b><i>from cancelled bookings</i></div>
-    <div class="c"><small>Average lost per cancellation</small><b>${php(N?L/N:NaN)}</b><i>revenue lost ÷ cancelled</i></div>
+    <div class="c"><small>Cancelled booking value</small><b class="dn">${php(L)}</b><i>from cancelled bookings</i></div>
+    <div class="c"><small>Average cancelled booking value</small><b>${php(N?L/N:NaN)}</b><i>cancelled booking value ÷ cancelled bookings</i></div>
     <div class="c"><small>Cancelled room nights</small><b>${fmt(sum(cx,r=>+r.room_nights||0))}</b><i>${pct(nights?sum(cx,r=>+r.room_nights||0)/nights:NaN)} of room nights</i></div>
     <div class="c"><small>Average window</small><b>${isNaN(avgW(cx))?'–':Math.round(avgW(cx))+' days'}</b><i>booking to check-in, cancelled</i></div>
-    <div class="c"><small>Largest single loss</small><b>${php(N?Math.max(...cx.map(lost)):NaN)}</b><i>one cancelled booking</i></div></div>`;
+</div>`;
   const maxC = Math.max(1, ...WIN.map(w=>cx.filter(r=>wname(r)===w[0]).length));
   const winRows = WIN.map(w => { const a=cx.filter(r=>wname(r)===w[0]), v=sum(a,lost);
     return [w[0],fmt(a.length),`${pct(N?a.length/N:NaN)}<span class="bx" style="width:${a.length/maxC*160}px"></span>`,php(v),a.length?php(v/a.length):'–']; });
@@ -1410,15 +1346,15 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>r.src===s).length}</b>`]);
   const top = [...cx].sort((a,b)=>lost(b)-lost(a)).slice(0,10).map(r=>[S.pm[r.property]?.name||r.property,r.src,r.room_type&&r.room_type!=='-'?r.room_type:'–',r.booking_date?fd(r.booking_date):'–',r.check_in?fd(r.check_in):'–',lead(r)==null?'–':lead(r)+' days',fmt(r.room_nights),`<span class="dn">${php(lost(r))}</span>`]);
   const srcOpts = [['ALL','All'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
-  const H = ['','Bookings','Cancelled','Cancel rate','Revenue lost','Average lost','Average window'];
+  const H = ['','Bookings','Cancelled','Cancel rate','Cancelled booking value','Average cancelled value','Average window'];
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
-  <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Revenue lost = the booking value before cancellation (Suggested Deposit, since cancelled bookings show a Grand Total of 0). The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
+  <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Cancelled booking value is based on Suggested Deposit, since cancelled bookings show a Grand Total of 0; it is not confirmed actual revenue loss. The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
   ${cards}
-  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Value lost (₱)',vlabel:'Value lost',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the revenue lost.'})}
-  <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Revenue lost','Average lost'],winRows)}</div>
+  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
+  <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Cancelled booking value','Average cancelled value'],winRows)}</div>
   <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
-  <div class="p"><h3>Largest losses, per cancelled reservation</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Revenue lost'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
+  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
   bind(['cp','cs','cm','cg'], cancel);
 }
 
