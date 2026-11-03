@@ -1317,11 +1317,11 @@ function res(){
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
   <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div></div>
+  ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
   <div class="p res-scroll-card"><h3>By booking date</h3><div class="res-table-scroll">${tbl(['Booking date','Bookings','Cancelled','Cancel rate'],grp(r=>r.booking_date||'').map(([k,a])=>[k?fd(k):'–',fmt(a.length),fmt(a.filter(Cn).length),pct(a.filter(Cn).length/a.length)]))}</div>
   <p class="note">OTA ${fmt(ota)} (${pct(rs.length?ota/rs.length:NaN)}) · Direct ${fmt(rs.filter(r=>r.source_category==='Direct').length)}</p></div></div>
-  ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p"><h3>Latest reservations</h3>${tbl(['Property','Guest name','Room type','Source','Check-in','Nights','Total','Status'],[...rs].sort((a,b)=>(b.booking_date||'')<(a.booking_date||'')?-1:1).slice(0,15).map(r=>[S.pm[r.property]?.name||r.property,r.guest_name||'–',r.room_type||'–',r.source||'–',r.check_in?fd(r.check_in):'–',fmt(r.room_nights),Cn(r)?`<s>${php(r.suggested_deposit)}</s>`:php(r.grand_total),Cn(r)?'<span class="dn">Cancelled</span>':r.status]))}</div>`;
   bind(['st','sr','bm'], res);
 }
@@ -1404,6 +1404,7 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${bookingYearFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
   <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Cancelled booking value is based on Suggested Deposit, since cancelled bookings show a Grand Total of 0; it is not confirmed actual revenue loss. The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
   ${cards}
+  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
   <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Cancelled booking value','Average cancelled value'],winRows)}</div>
   <div class="p"><h3>Cancelled bookings by channel group</h3>
     <div class="channel-pie-wrap">
@@ -1416,9 +1417,8 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   </div>
   <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),sourceTableRows)}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
-  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>
-  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
-`;  bind(['cp','cs','cm','cg'], cancel);
+  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
+  bind(['cp','cs','cm','cg'], cancel);
 }
 
 function showUploadConfirm(message){
