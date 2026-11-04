@@ -1408,18 +1408,30 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r)===name)]);
   const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
   const individualGroup = r => String(r.source_category||'').toLowerCase()==='ota' ? 'OTA' : 'DIRECT';
-  // Show only sources with at least one cancellation. Keep OTA rows together
-  // first, followed by DIRECT rows; within each group sort by cancelled value.
-  const srcs = grp(r=>r.src)
-    .filter(([,a])=>a.some(Cn))
-    .sort((a,b)=>{
-      const ga=individualGroup(a[1][0]), gb=individualGroup(b[1][0]);
-      const order={OTA:0,DIRECT:1};
-      return (order[ga]-order[gb]) ||
-        (sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost));
-    })
-    .map(([n,a])=>[individualGroup(a[0]),n,...row('',a).slice(1)]);
-  const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
+  const canonicalIndividualSource = name => {
+    const key = String(name||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+    // Consolidate all free-of-charge room source variants into one line.
+    if (['roomfoc','foc','roomsfreeofcharge'].includes(key)) return 'FOC / Free of Charge';
+    return name;
+  };
+  const groupedIndividualSources = () => {
+    const m = new Map();
+    rs.forEach(r => {
+      const name = canonicalIndividualSource(r.src);
+      if (!m.has(name)) m.set(name, []);
+      m.get(name).push(r);
+    });
+    return [...m.entries()]
+      .map(([name,a])=>({name,a,channel:individualGroup(a[0]),cancelled:a.filter(Cn).length,value:sum(a.filter(Cn),lost)}))
+      // Exclude sources with no cancelled reservations.
+      .filter(x=>x.cancelled>0)
+      // Keep every OTA source together, followed by every DIRECT source.
+      .sort((a,b)=>(a.channel===b.channel?0:a.channel==='OTA'?-1:1) || (b.value-a.value) || a.name.localeCompare(b.name));
+  };
+  const srcs = groupedIndividualSources()
+    .map(x=>[x.channel,x.name,...row('',x.a).slice(1)]);
+  const srcList = groupedIndividualSources().map(x=>x.name);
+
   const piePalette=['#147d86','#e0a23b','#5279a5'];
   let pieCursor=0;
   const pieSegments=groupedChannels.map(([name,a],i)=>{
@@ -1432,9 +1444,9 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
     : '#e7edf0';
   const pieLegend=pieSegments.map(x=>`<div class="pie-legend-item"><span class="pie-dot" style="background:${x.color}"></span><span>${x.name}</span><b>${fmt(x.count)}</b><small>${x.pct.toFixed(1)}%</small></div>`).join('');
   const cell = n => n ? `<div style="margin:-8px -10px;padding:8px 10px;background:rgba(14,124,134,${(0.12+0.45*n/maxM).toFixed(2)})"><b>${n}</b></div>` : '<span class="mu">–</span>';
-  const mcount = (s,w) => cx.filter(r=>r.src===s && wname(r)===w).length;
+  const mcount = (s,w) => cx.filter(r=>canonicalIndividualSource(r.src)===s && wname(r)===w).length;
   const maxM = Math.max(1, ...srcList.flatMap(s=>WIN.map(w=>mcount(s,w[0]))));
-  const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>r.src===s).length}</b>`]);
+  const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>canonicalIndividualSource(r.src)===s).length}</b>`]);
   const top = [...cx].sort((a,b)=>lost(b)-lost(a)).slice(0,10).map(r=>[S.pm[r.property]?.name||r.property,r.src,r.room_type&&r.room_type!=='-'?r.room_type:'–',r.booking_date?fd(r.booking_date):'–',r.check_in?fd(r.check_in):'–',lead(r)==null?'–':lead(r)+' days',fmt(r.room_nights),`<span class="dn">${php(lost(r))}</span>`]);
   const srcOpts = [['ALL','All'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
   const H = ['','Bookings','Cancelled','Cancel rate','Cancelled booking value','Average cancelled value','Average window'];
