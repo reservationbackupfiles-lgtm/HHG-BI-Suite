@@ -36,6 +36,15 @@ main{padding:0 28px 28px;min-width:0}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
 .c{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
 .c small{color:var(--mut);font-weight:700}.c b{display:block;font-size:24px;font-weight:800}.c i{font-style:normal;color:var(--mut);font-size:12.5px;display:block}
+.c.kpi-help{position:relative}
+.kpi-help-btn{position:absolute;top:12px;right:13px;width:19px;height:19px;flex:0 0 19px;border:1px solid #81949B;border-radius:50%;padding:0;background:#fff;color:#526A73;font-size:12px;line-height:17px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.kpi-help-btn:hover,.kpi-help-btn:focus-visible,.kpi-help.open .kpi-help-btn{background:#EAF5F6;border-color:var(--sea);color:var(--sea);outline:none}
+.kpi-help-pop{position:absolute;top:39px;right:10px;z-index:60;width:min(300px,calc(100vw - 48px));white-space:normal;background:#10242B;color:#fff;border-radius:8px;padding:11px 13px;font-size:11.5px;line-height:1.5;font-weight:400;box-shadow:0 8px 22px rgba(0,0,0,.2);opacity:0;visibility:hidden;transform:translateY(-3px);transition:opacity .12s ease,transform .12s ease;pointer-events:none}
+.kpi-help.open .kpi-help-pop{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+.kpi-help-pop strong{font-weight:700}
+@media(max-width:700px){.kpi-help-pop{right:0;width:min(280px,calc(100vw - 40px))}}
+
+
 .p{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;overflow-x:auto}.p h3{margin:0 0 10px;font-size:15px}
 /* Keep long reservation summaries compact; scroll within each card. */
 .res-scroll-card{height:520px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -68,6 +77,10 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .dd .end{border-bottom:1px solid var(--line)}.dd .al{background:#EEF6F7}.dd .t{border-left:2px solid var(--line);font-weight:700}.dd th.f,.dd th.m{background:#F7F9FA}
 .cb3{border:0;background:none;padding:2px 4px;cursor:pointer;color:inherit;font:inherit;border-radius:4px}.cb3:hover{background:#D5EBED}
 .daygrid-scroll{overflow-x:auto;max-width:100%;}
+.drag-scroll-active{cursor:grabbing!important;user-select:none!important}
+.daygrid-scroll,.res-table-scroll,.p:has(>table){cursor:grab}
+.daygrid-scroll table,.res-table-scroll table,.p:has(>table) table{cursor:inherit}
+
 .pop{position:absolute;top:46px;left:0;z-index:20;width:330px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(16,36,43,.2)}
 .ph{display:flex;gap:8px;align-items:center;margin-bottom:12px}.ps{display:flex;flex:1;border:1px solid #C9D5DA;border-radius:8px;overflow:hidden}.ps select{border:0;border-radius:0}
 .nb{width:38px;height:38px;border:1px solid #C9D5DA;border-radius:8px;background:#fff;font-size:18px;cursor:pointer}
@@ -349,6 +362,66 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 }
 
 .pickup-card{margin-top:14px}.pickup-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.pickup-head h3{margin:0}.pickup-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pickup-tabs{display:flex;gap:2px;padding:3px;background:#F2F5F6;border:1px solid var(--line);border-radius:9px}.pickup-tabs button{border:0;background:transparent;color:var(--mut);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}.pickup-tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px #10242b18}.pickup-chart{height:290px;margin-top:10px}.pickup-summary{display:flex;gap:22px;flex-wrap:wrap;padding-top:10px;font-size:13px}.pickup-summary span,.pickup-summary b{font-weight:700}.pickup-card .note{margin-bottom:0}@media(max-width:700px){.pickup-chart{height:260px}.pickup-controls{width:100%}.pickup-tabs{max-width:100%;overflow:auto}.pickup-tabs button{padding:6px 8px}}
+
+.channel-pie-wrap{display:flex;align-items:center;gap:30px;flex-wrap:wrap;padding:14px 0 18px}
+.channel-pie{width:190px;height:190px;border-radius:50%;display:grid;place-items:center;flex:0 0 190px}
+.channel-pie-hole{width:112px;height:112px;border-radius:50%;background:var(--card,#fff);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.channel-pie-hole b{font-size:23px}.channel-pie-hole small{color:var(--muted,#64748b)}
+.channel-pie-legend{display:grid;gap:12px;min-width:220px}
+.pie-legend-item{display:grid;grid-template-columns:12px minmax(130px,1fr) auto auto;align-items:center;gap:9px}
+.pie-dot{width:10px;height:10px;border-radius:50%}.pie-legend-item small{color:var(--muted,#64748b);min-width:48px;text-align:right}
+@media(max-width:600px){.channel-pie{width:160px;height:160px;flex-basis:160px}.channel-pie-hole{width:96px;height:96px}}
+
+
+/* Compact typography and spacing: reduce page height while keeping tables readable. */
+body{font-size:12px;line-height:1.35}
+main{padding:0 20px 20px}
+.top{padding:11px 0;gap:9px}
+.top h1{font-size:19px}
+.brand{font-size:17px;padding-bottom:12px}
+.nav{padding:7px 9px;font-size:12px}
+.bar{gap:7px;margin-bottom:11px}
+.tab{padding:6px 10px;font-size:12px}
+.cards{gap:8px;margin-bottom:11px}
+.c{padding:10px 12px}
+.c small{font-size:10.5px}
+.c b{font-size:20px}
+.c i{font-size:10.5px;line-height:1.3}
+.p{padding:12px;margin-bottom:11px}
+.p h3{font-size:13px;margin-bottom:8px}
+table th,table td{padding:6px 8px;font-size:11.5px}
+th{font-size:11px}
+.note{font-size:11px;line-height:1.35}
+.dd th,.dd td{font-size:11px;line-height:1.3;padding:2px 4px}
+.dd th{font-size:10.5px}
+.dm th,.dm td{font-size:12px;min-width:58px;padding:7px 6px}
+.dm th{font-size:10.5px}
+.dm small{font-size:10px}
+.dm .sub td{font-size:11px}
+.lb{font-size:11.5px}
+.pill{font-size:11.5px;padding:2px 10px;min-height:34px}
+.pill select{font-size:11.5px}
+.filter-pill{font-size:11.5px;height:34px}
+.filter-pill select{font-size:11.5px}
+.prop-filter-toggle{height:34px;font-size:11.5px}
+.rst{min-height:34px;padding:5px 11px;font-size:11.5px}
+.pickup-card{margin-top:10px}
+.pickup-chart{height:250px}
+.pickup-summary{font-size:11.5px;gap:16px;padding-top:8px}
+.pickup-tabs button{font-size:11px;padding:5px 8px}
+.channel-pie-wrap{gap:22px;padding:10px 0 14px}
+.channel-pie{width:160px;height:160px;flex-basis:160px}
+.channel-pie-hole{width:96px;height:96px}
+.channel-pie-hole b{font-size:20px}
+.channel-pie-legend{gap:8px;font-size:11.5px}
+.res-scroll-card{height:440px}
+.ch{height:300px}
+@media(max-width:760px){
+  main{padding:0 12px 16px}
+  .p{padding:10px}
+  .cards{gap:7px}
+}
+
 </style>
 </head>
 <body>
@@ -366,6 +439,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
   <button class="nav" data-v="dash">Dashboard</button>
   <button class="nav" data-v="compare">Compare</button>
   <button class="nav" data-v="pace">Pace</button>
+  <button class="nav" data-v="reports">Reports</button>
   <button class="nav" data-v="res">Reservations</button>
   <button class="nav" data-v="cancel">Cancellations</button>
 
@@ -421,7 +495,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportMonth:today().slice(0,7),reportPage:1,reportPageSize:10,f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -651,6 +725,8 @@ async function load(){
       property: codeById[String(r.property_id)],
       cancellation_date: String(r.cancellation_date || '').slice(0,10),
       booking_date: String(r.booking_date || '').slice(0,10),
+      check_in: String(r.check_in || r.arrival_date || r.stay_start || r.start_date || '').slice(0,10),
+      check_out: String(r.check_out || r.departure_date || r.stay_end || r.end_date || '').slice(0,10),
       source: r.source || '',
       room_revenue_total: +(r.room_revenue_total ?? r.original_room_revenue_total ?? r.grand_total ?? r.original_grand_total ?? 0) || 0,
       room_nights: +(r.room_nights || 0)
@@ -660,7 +736,17 @@ async function load(){
       const property=codeById[String(r.property_id)], year_no=+stay.slice(0,4), month_no=+stay.slice(5,7);
       return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.rooms_sold||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
     }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
-    S.pace = adrPace.length ? adrPace : rawPace.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],snapshot_date:r.snapshot_date,year_no:+d.slice(0,4),month_no:+d.slice(5,7),day:+d.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[codeById[String(r.property_id)]]?.total_rooms||0)*dim(+d.slice(0,4),+d.slice(5,7))};}).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    const snapshotPace = rawPace.map(r=>{
+      const d=String(r.stay_date||''), snap=String(r.snapshot_date||'');
+      const property=codeById[String(r.property_id)], year_no=+d.slice(0,4), month_no=+d.slice(5,7);
+      return {property,snapshot_date:snap,year_no,month_no,day:+snap.slice(8,10),ty_rooms_sold:+r.room_nights||0,ty_capacity:(S.pm[property]?.total_rooms||0)*dim(year_no,month_no)};
+    }).filter(r=>r.property&&r.snapshot_date&&r.year_no&&r.month_no&&r.day);
+    // Merge both history sources. adr_history is preferred for duplicate keys,
+    // but pace_snapshots must still contribute months missing from adr_history.
+    const paceByKey = new Map();
+    snapshotPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
+    adrPace.forEach(r=>paceByKey.set([r.property,r.snapshot_date,r.year_no,r.month_no].join('|'),r));
+    S.pace = [...paceByKey.values()];
     return true;
   }catch(e){ $('#view').innerHTML = `<p class="err">Could not load data: ${e.message}</p>`; return false; }
 }
@@ -741,7 +827,56 @@ const selectedCodes = () => S.selectedProps === null
 const filterSelected = cs => cs.filter(c => selectedCodes().includes(c));
 
 /* shared helpers */
-const V = {dash, compare, pace, res, cancel, admin, users};
+
+/* KPI help: hover to preview, click to pin, outside click/Escape to close */
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.kpi-help-btn');
+  document.querySelectorAll('.kpi-help.open').forEach(el=>{
+    if(!btn||!el.contains(btn)){el.classList.remove('open');el.querySelector('.kpi-help-btn')?.setAttribute('aria-expanded','false');}
+  });
+  if(btn){
+    const card=btn.closest('.kpi-help');
+    const open=!card.classList.contains('open');
+    card.classList.toggle('open',open);
+    btn.setAttribute('aria-expanded',String(open));
+    e.stopPropagation();
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.querySelectorAll('.kpi-help.open').forEach(el=>{
+    el.classList.remove('open');el.querySelector('.kpi-help-btn')?.setAttribute('aria-expanded','false');
+  });
+});
+
+/* Drag horizontally across wide data tables with the mouse */
+(function enableTableDragScroll(){
+  let active=null, startX=0, startScroll=0, moved=false;
+  const getScroller=target=>{
+    if(!target.closest('table')) return null;
+    return target.closest('.daygrid-scroll,.res-table-scroll,.p')||null;
+  };
+  document.addEventListener('pointerdown',e=>{
+    if(e.button!==0||e.target.closest('button,a,input,select,textarea')) return;
+    const el=getScroller(e.target);
+    if(!el||el.scrollWidth<=el.clientWidth+2) return;
+    active=el;startX=e.clientX;startScroll=el.scrollLeft;moved=false;
+    el.classList.add('drag-scroll-active');
+    el.setPointerCapture?.(e.pointerId);
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!active) return;
+    const dx=e.clientX-startX;
+    if(Math.abs(dx)>3)moved=true;
+    if(moved){active.scrollLeft=startScroll-dx;e.preventDefault();}
+  },{passive:false});
+  const finish=()=>{
+    if(active){active.classList.remove('drag-scroll-active');active=null;}
+  };
+  document.addEventListener('pointerup',finish);
+  document.addEventListener('pointercancel',finish);
+})();
+
+const V = {dash, compare, pace, reports, res, cancel, admin, users};
 function show(v){
   S.view = v; charts.forEach(c=>c.destroy()); charts = [];
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
@@ -753,11 +888,11 @@ const empty = m => { $('#view').innerHTML = `<p class="mu">${m}</p>`; };
 const opts = (a,v) => a.map(([k,t])=>`<option value="${k}"${String(k)===String(v)?' selected':''}>${t}</option>`).join('');
 const sel = (id,l,a,v) => `<div><label for="${id}">${l}</label><select id="${id}">${opts(a,v)}</select></div>`;
 const propOpts = () => [['ALL','All properties'],...S.props.map(p=>[p.code,p.name])];
-const years = () => [...new Set(S.adr.map(r=>r.year))].sort((a,b)=>b-a);
+const years = () => [...new Set([...S.adr.map(r=>r.year), +today().slice(0,4)])].sort((a,b)=>b-a);
 const codes = c => c==='ALL' ? S.props.map(p=>p.code) : [c];
 const bind = (ks,fn) => ks.forEach(k => { const el=$('#'+k); if(el) el.onchange = e => { S.f[k]=e.target.value; fn(); }; });
 const tbl = (h,rows,cls) => `<table${cls?` class="${cls}"`:''}><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
-function filt(){ const f=S.f; f.year??=years()[0]; f.month??='ALL'; return f; }
+function filt(){ const f=S.f; f.year??=+today().slice(0,4); f.month??='ALL'; return f; }
 const inlineFilter = (id, label, options, value) => `<div class="filter-pill"><span>${label}</span><select id="${id}" aria-label="${label}">${opts(options,value)}</select></div>`;
 const filterBar = noMonth => {
   const f=filt();
@@ -775,7 +910,16 @@ const monthsFor = (y,m,cs) => m!=='ALL' ? [+m] : [...new Set(S.adr.filter(r=>r.y
 function kc(t,a,b,f,pts){
   const d=a-b, g=b?d/b:NaN, c=isNaN(d)?'':d>=0?'up':'dn', ar=d>=0?'▲':'▼';
   const dt = isNaN(d) ? '' : `${ar} ${pts?(Math.abs(d)*100).toFixed(1)+' pts':f(Math.abs(d))}${isNaN(g)?'':' · '+(Math.abs(g)*100).toFixed(1)+'%'}`;
-  return `<div class="c"><small>${t}</small><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
+  const ff=filt(), period=ff.month==='ALL'?'all months':MN[+ff.month-1], propLabel=S.selectedProps===null?'all properties':selectedCodes().map(code=>S.props.find(p=>p.code===code)?.name||code).join(', ');
+  const basis={
+    'Room revenue':`Total room revenue recorded in the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This KPI follows the selected Dashboard filters. Cancelled revenue is monitored separately in Daily Pickup and is not automatically added to this ADR-based figure.`,
+    'Occupancy':`Room nights sold divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. Available room nights are calculated using each property's room inventory multiplied by the number of days in the selected period. The comparison is against the same period last year.`,
+    'ADR':`Average Daily Rate (ADR) is room revenue divided by room nights sold for ${period} ${ff.year}, covering ${propLabel}. It represents the average room revenue earned per occupied room night. The comparison is against the same period last year.`,
+    'RevPAR':`Revenue per Available Room (RevPAR) is room revenue divided by available room nights for ${period} ${ff.year}, covering ${propLabel}. It reflects room revenue generated across the total available room inventory, including unoccupied rooms. The comparison is against the same period last year.`,
+    'Rooms sold':`Total room nights sold in the ADR daily reports for ${period} ${ff.year}, covering ${propLabel}. This figure represents room nights, not the number of individual reservations or guests. The comparison is against the same period last year.`
+  };
+  const tip=(basis[t]||`${t} for ${period} ${ff.year}, covering ${propLabel}.`).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="c kpi-help"><small>${t}</small><button type="button" class="kpi-help-btn" aria-label="Show ${t} explanation" aria-expanded="false" title="Click for KPI explanation">?</button><span class="kpi-help-pop" role="tooltip">${tip}</span><b>${f(a)}</b><i>Last year ${f(b)}</i><i class="${c}">${dt}</i></div>`;
 }
 function mk(id, type, labels, sets, fm, horiz){
   charts.push(new Chart($(id), {type, data:{labels, datasets:sets},
@@ -793,10 +937,20 @@ function dash(){
   const ty=agg(y,ms,cs), ly=agg(y-1,ms,cs), msA=monthsFor(y,f.month,all);
   const T = {occ:'Occupancy by property',rev:'Room revenue by property',adr:'ADR by property',rvp:'RevPAR by property'};
   $('#view').innerHTML = filterBar()+`<div class="cards">${kc('Room revenue',ty.rev,ly.rev,php)}${kc('Occupancy',ty.occ,ly.occ,pct,1)}${kc('ADR',ty.adr,ly.adr,php)}${kc('RevPAR',ty.revpar,ly.revpar,php)}${kc('Rooms sold',ty.sold,ly.sold,fmt)}</div>
-  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button><button type="button" data-pick-year="2025">2025</button><button type="button" data-pick-year="2026">2026</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
+  <div class="p pickup-card"><div class="pickup-head"><h3>Daily Pickup</h3><div class="pickup-controls"><div class="pickup-tabs"><button type="button" data-pick-days="10" class="on">10D</button><button type="button" data-pick-days="30">30D</button><button type="button" data-pick-days="60">60D</button><button type="button" data-pick-year="${+today().slice(0,4)-1}">${+today().slice(0,4)-1}</button><button type="button" data-pick-year="${+today().slice(0,4)}">${+today().slice(0,4)}</button></div><div class="pickup-tabs"><button type="button" data-pick-view="Revenue" class="on">Revenue</button><button type="button" data-pick-view="Total">Total</button><button type="button" data-pick-view="By Hotel">By Hotel</button><button type="button" data-pick-view="By Source">By Source</button></div></div></div><div class="pickup-chart"><canvas id="dailyPickupChart"></canvas></div><div class="pickup-summary" id="dailyPickupSummary"></div><p class="note" id="dailyPickupNote"></p></div>
   <div class="p"><h3>Room revenue by month</h3><div class="ch"><canvas id="c0"></canvas></div></div>
   <div class="two">${Object.keys(T).map(k=>`<div class="p"><h3>${T[k]}</h3><div class="ch"><canvas id="c_${k}"></canvas></div></div>`).join('')}</div>
-  <p class="note">Occupancy = rooms sold ÷ (rooms × days). Last year compares the same months that have data this year.</p>`;
+  <div class="p"><h3>Property performance, ${y}</h3>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Property</th><th>Room revenue</th><th>Occupancy</th><th>ADR</th><th>RevPAR</th><th>Rooms sold</th></tr></thead>
+      <tbody>${S.props.filter(p=>selectedCodes().includes(p.code)).map(p=>{
+        const v=agg(y,monthsFor(y,f.month,[p.code]),[p.code]);
+        const hasData=v.sold||v.rev||v.avail;
+        return `<tr><td>${p.name}</td><td>${hasData?php(v.rev):'no data yet'}</td><td>${hasData?pct(v.occ):'–'}</td><td>${hasData?php(v.adr):'–'}</td><td>${hasData?php(v.revpar):'–'}</td><td>${hasData?fmt(v.sold):'–'}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  </div>
+  <p class="note">Occupancy = rooms sold ÷ available room nights. The property table follows the selected year, month, and property filters.</p>`;
   bind(['year','month'], dash);
   bindDailyPickup();
   const mm = Array.from({length:12},(_,i)=>i+1);
@@ -916,12 +1070,14 @@ function pace(){
   body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
   body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
   body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
-  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
+  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), delta=t==null||pr==null?null:t-pr, miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
+  const deltaSign=delta>0?'+':delta<0?'−':'';
+  const deltaClass=delta>0?'up':delta<0?'dn':'';
   const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
    <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
    <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
-   <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
+   <div class="c"><small>Added since the previous upload</small><b class="${deltaClass}">${delta==null?'–':deltaSign+fmt(Math.abs(delta))}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
    <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
   <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
   <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
@@ -964,6 +1120,194 @@ function ddPop(){
 }
 
 
+
+/* Reports: historical and exportable reporting, kept separate from operational Pace */
+const reportEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reportMonthLabel = m => {
+  if(!/^\d{4}-\d{2}$/.test(m||'')) return 'Selected month';
+  const [y,mo]=m.split('-').map(Number); return `${MN[mo-1]} ${y}`;
+};
+function buildReportData(){
+  const month=S.reportMonth||today().slice(0,7), type=S.reportType||'pace', codes=selectedCodes();
+  const props=Object.fromEntries(S.props.map(p=>[p.code,p]));
+  if(type==='pace'){
+    const rows=S.pace.filter(r=>r.year_no===+month.slice(0,4)&&r.month_no===+month.slice(5,7)&&codes.includes(r.property))
+      .sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)||a.property.localeCompare(b.property));
+    const detail=rows.map(r=>({
+      'Stay Month':month,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Upload Date':r.snapshot_date,'Room Nights on the Books':+r.ty_rooms_sold||0,
+      'Room Night Capacity':(props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no),
+      'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))):null
+    }));
+    return {title:`Pace History - ${reportMonthLabel(month)}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
+  }
+  if(type==='monthly'){
+    const source=S.adr.filter(r=>`${r.year}-${pad(r.month)}`===month&&codes.includes(r.property));
+    const grouped=new Map();
+    source.forEach(r=>{
+      const x=grouped.get(r.property)||{property:r.property,sold:0,revenue:0,available:0};
+      x.sold+=+r.rooms_sold||0; x.revenue+=+r.room_revenue||0; x.available+=+r.rooms_available||0; grouped.set(r.property,x);
+    });
+    const rows=[...grouped.values()].map(x=>({
+      'Property':props[x.property]?.name||x.property,'Property Code':x.property,
+      'Room Nights Sold':x.sold,'Room Revenue':x.revenue,'Available Room Nights':x.available,
+      'Occupancy':x.available?x.sold/x.available:null,'ADR':x.sold?x.revenue/x.sold:null,'RevPAR':x.available?x.revenue/x.available:null
+    })).sort((a,b)=>a.Property.localeCompare(b.Property));
+    return {title:`Monthly Performance - ${reportMonthLabel(month)}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
+  }
+  if(type==='reservations'){
+    const rows=S.res.filter(r=>String(r.check_in||'').slice(0,7)===month&&codes.includes(r.property))
+      .sort((a,b)=>String(a.check_in||'').localeCompare(String(b.check_in||'')));
+    const data=rows.map(r=>({
+      'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Guest Name':r.guest_name||'','Room Type':r.room_type||'','Check-in':r.check_in||'','Check-out':r.check_out||'',
+      'Room Nights':+r.room_nights||0,'Revenue':+r.grand_total||0,'Status':r.status||'','Source':r.source||''
+    }));
+    return {title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
+  }
+  const reservationByKey=new Map();
+  S.res.forEach(r=>{
+    const key=[r.property,String(r.reservation_no||r.reservation_id||'')].join('|');
+    if(key!=='|') reservationByKey.set(key,r);
+  });
+  const rows=S.cancellations.filter(r=>String(r.cancellation_date||'').slice(0,7)===month&&codes.includes(r.property))
+    .sort((a,b)=>String(a.cancellation_date||'').localeCompare(String(b.cancellation_date||'')));
+  const data=rows.map(r=>{
+    const reservation=reservationByKey.get([r.property,String(r.reservation_no||r.reservation_id||'')].join('|'))||{};
+    const checkIn=String(r.check_in||r.arrival_date||r.stay_start||r.start_date||reservation.check_in||'').slice(0,10);
+    const checkOut=String(r.check_out||r.departure_date||r.stay_end||r.end_date||reservation.check_out||'').slice(0,10);
+    const daysBefore=checkIn&&r.cancellation_date
+      ? Math.round((Date.parse(checkIn+'T00:00:00Z')-Date.parse(r.cancellation_date+'T00:00:00Z'))/86400000)
+      : null;
+    const stayNights=checkIn&&checkOut
+      ? Math.max(0,Math.round((Date.parse(checkOut+'T00:00:00Z')-Date.parse(checkIn+'T00:00:00Z'))/86400000))
+      : (+r.room_nights||+reservation.room_nights||0);
+    return {
+      'Reservation Number':r.reservation_no||r.reservation_id||'','Guest Name':r.guest_name||r.guest_full_name||r.name||reservation.guest_name||reservation.guest_full_name||reservation.name||'',
+      'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'',
+      'Check-in':checkIn,'Check-out':checkOut,'Days Before Check-in':daysBefore,
+      'Stay Nights':stayNights,'Source':r.source||reservation.source||'',
+      'Room Nights':+r.room_nights||+reservation.room_nights||0,
+      'Original Room Revenue':+(r.room_revenue_total||0)
+    };
+  });
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
+}
+function reportNumber(value, digits=2){
+  if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
+  return Number(value).toLocaleString('en-PH',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+}
+function reportCell(value, header){
+  if(value===null||value===undefined||value==='') return '—';
+  if(header==='Occupancy on Books'||header==='Occupancy') return `${(Number(value)*100).toFixed(2)}%`;
+  if(header==='ADR'||header==='RevPAR') return reportNumber(value,2);
+  return reportEsc(value);
+}
+function reports(){
+  $('#ttl').textContent='Reports';
+  const reportOptions=[
+    ['pace','Pace History (daily snapshots)'],
+    ['monthly','Monthly Performance Summary'],
+    ['reservations','Reservations Register'],
+    ['cancellations','Cancellations Register']
+  ];
+  const data=buildReportData();
+  const paginated=['reservations','cancellations'].includes(S.reportType);
+  const pageSize=paginated?(+S.reportPageSize||10):Math.max(data.rows.length,1);
+  const total=data.rows.length;
+  const pages=Math.max(1,Math.ceil(total/pageSize));
+  S.reportPage=Math.min(Math.max(1,+S.reportPage||1),pages);
+  const page=S.reportPage;
+  const first=total?((page-1)*pageSize+1):0, last=Math.min(page*pageSize,total);
+  const visibleRows=paginated?data.rows.slice((page-1)*pageSize,page*pageSize):data.rows.slice(0,20);
+  const table=visibleRows.length
+    ? `<div style="overflow:auto"><table><thead><tr>${data.headers.map(h=>`<th>${reportEsc(h)}</th>`).join('')}</tr></thead><tbody>${visibleRows.map(r=>`<tr>${data.headers.map(h=>`<td>${reportCell(r[h],h)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+    : '<p class="mu">No records found for this report and month. Check the selected month, property filter, and uploaded source data.</p>';
+  const pager=paginated?`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="note" style="margin:0">Rows per page</span>
+        <select id="reportPageSize" style="width:auto;min-width:82px;padding:7px 10px">
+          ${[10,15,20,50,100,250].map(n=>`<option value="${n}"${pageSize===n?' selected':''}>${n}</option>`).join('')}
+        </select>
+        <span class="note" style="margin:0">Showing ${fmt(first)} to ${fmt(last)} of ${fmt(total)} entries</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <button class="tab" data-rpt-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>‹</button>
+        ${Array.from({length:pages},(_,i)=>i+1).filter(n=>pages<=7||n===1||n===pages||Math.abs(n-page)<=1).map((n,i,a)=>`${i&&n-a[i-1]>1?'<span class="mu">…</span>':''}<button class="tab${n===page?' on':''}" data-rpt-page="${n}">${n}</button>`).join('')}
+        <button class="tab" data-rpt-page="${Math.min(pages,page+1)}" ${page>=pages?'disabled':''}>›</button>
+        <span class="note" style="margin:0">Page ${fmt(page)} of ${fmt(pages)}</span>
+      </div>
+    </div>`:'<p class="note">Preview shows up to 20 rows. Export includes all matching records.</p>';
+  $('#view').innerHTML=`
+    <div class="bar">${sharedPropertyFilter()}
+      <div class="filter-pill"><span>Report</span><select id="reportType">${reportOptions.map(([v,l])=>`<option value="${v}"${S.reportType===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="filter-pill"><span>Month</span><input id="reportMonth" type="month" value="${reportEsc(S.reportMonth)}" style="width:145px;border:0;padding:4px;background:transparent;color:var(--ink);font-weight:700"></div>
+    </div>
+    <div class="cards">
+      <div class="c"><small>Report</small><b style="font-size:17px">${reportEsc(data.title)}</b><i>Selected reporting period</i></div>
+      <div class="c"><small>Records</small><b>${fmt(total)}</b><i>${S.selectedProps===null?'All properties':selectedCodes().length+' selected properties'}</i></div>
+      <div class="c"><small>Export</small><b style="font-size:17px">Excel / CSV</b><i>Download all filtered records</i></div>
+    </div>
+    <div class="p">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0">${reportEsc(data.title)}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" style="margin:0" data-a="rptExport">Export Excel</button>
+          <button class="tab" data-a="rptCSV">Export CSV</button>
+        </div>
+      </div>
+      <p class="note">${reportEsc(data.note)}</p>
+      ${table}
+      ${pager}
+    </div>`;
+  $('#reportType').onchange=e=>{S.reportType=e.target.value;S.reportPage=1;reports();};
+  $('#reportMonth').onchange=e=>{if(e.target.value){S.reportMonth=e.target.value;S.reportPage=1;reports();}};
+  const sizeSelect=$('#reportPageSize');
+  if(sizeSelect) sizeSelect.onchange=e=>{S.reportPageSize=+e.target.value;S.reportPage=1;reports();};
+  document.querySelectorAll('[data-rpt-page]').forEach(b=>b.onclick=()=>{S.reportPage=+b.dataset.rptPage;reports();});
+}
+function exportReportExcel(){
+  const data=buildReportData(), wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(data.rows,{header:data.headers});
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1:A1');
+  data.headers.forEach((header,col)=>{
+    const fmt=header==='Occupancy'||header==='Occupancy on Books'?'0.00%':
+      (header==='ADR'||header==='RevPAR')?'#,##0.00':null;
+    if(!fmt)return;
+    for(let row=1;row<=range.e.r;row++){
+      const cell=ws[XLSX.utils.encode_cell({r:row,c:col})];
+      if(cell&&typeof cell.v==='number') cell.z=fmt;
+    }
+  });
+  XLSX.utils.book_append_sheet(wb,ws,'Report');
+  if(S.reportType==='pace'){
+    const byDate=[...new Set(data.rows.map(r=>r['Upload Date']))].sort();
+    const properties=[...new Set(data.rows.map(r=>r['Property']))].sort();
+    const matrix=[['Property',...byDate]];
+    properties.forEach(p=>matrix.push([p,...byDate.map(d=>{
+      const r=data.rows.find(x=>x.Property===p&&x['Upload Date']===d); return r?r['Room Nights on the Books']:null;
+    })]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(matrix),'Pace Matrix');
+  }
+  XLSX.writeFile(wb,`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.xlsx`);
+  toast('Excel report downloaded.');
+}
+function exportReportCSV(){
+  const data=buildReportData();
+  const csvRows=data.rows.map(row=>Object.fromEntries(data.headers.map(h=>[
+    h,(h==='Occupancy'||h==='Occupancy on Books')&&row[h]!=null?`${(Number(row[h])*100).toFixed(2)}%`:
+      (h==='ADR'||h==='RevPAR')&&row[h]!=null?reportNumber(row[h],2):row[h]
+  ])));
+  const ws=XLSX.utils.json_to_sheet(csvRows,{header:data.headers});
+  const csv=XLSX.utils.sheet_to_csv(ws), blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url;a.download=`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.csv`;
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  toast('CSV report downloaded.');
+}
+
 /* Reservations */
 const rtext = r => !r ? 'All' : r.s===r.e ? fd(r.s) : fd(r.s)+' – '+fd(r.e);
 const fd = i => MN[+i.slice(5,7)-1]+' '+i.slice(8);
@@ -1005,7 +1349,7 @@ function res(){
   <p class="note" style="margin:-6px 0 16px">Showing ${fmt(rs.length)} reservations: ${parts.join(' · ')}. Every number on this page follows these filters.</p>
   <div class="cards"><div class="c"><small>Bookings</small><b>${fmt(T.n)}</b><i>in the selected filters</i></div><div class="c"><small>Cancelled</small><b>${fmt(T.c)}</b><i>${pct(T.n?T.c/T.n:NaN)} of bookings</i></div>
   <div class="c"><small>Room nights</small><b>${fmt(T.nt)}</b><i>booked</i></div><div class="c"><small>Cancelled nights</small><b>${fmt(T.cn)}</b><i>${pct(T.nt?T.cn/T.nt:NaN)} of room nights</i></div>
-  <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div><div class="c"><small>Value lost</small><b class="dn">${php(T.lost)}</b><i>from cancelled bookings</i></div></div>
+  <div class="c"><small>Booked revenue</small><b>${php(T.rev)}</b><i>excluding cancelled</i></div></div>
   ${dayGrid(rs.filter(r=>!Cn(r)), {kind:'b',mkey:'bm',title:'Daily bookings received, by booking day',dayLabel:'Booking day',l0:'Bookings',l2:'Revenue (₱)',vlabel:'Total',key:r=>r.booking_date,val:r=>+r.grand_total||0,note:'One column per day the bookings were received. Each hotel shows bookings, room nights and revenue. Cancelled bookings are not counted.'})}
   <div class="p res-scroll-card"><h3>Reservations and cancellations by month (check-in month)</h3><div class="res-table-scroll">${tbl(hd('Check-in month'),[...grp(r=>(r.check_in||'').slice(0,7)).map(([k,a])=>line(k?MN[+k.slice(5)-1]+' '+k.slice(0,4):'–',st(a))),line('<b>Total</b>',T)])}</div></div>
   <div class="two"><div class="p"><h3>By property</h3>${tbl(hd('Property'),byP.map(([n,s])=>line(n,s)))}</div>
@@ -1043,11 +1387,11 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const avgW = a => avg(a.map(lead).filter(x=>x!=null));
   const cards = `<div class="cards">
     <div class="c"><small>Cancelled bookings</small><b>${fmt(N)}</b><i>${pct(rs.length?N/rs.length:NaN)} of ${fmt(rs.length)} bookings</i></div>
-    <div class="c"><small>Revenue lost</small><b class="dn">${php(L)}</b><i>from cancelled bookings</i></div>
-    <div class="c"><small>Average lost per cancellation</small><b>${php(N?L/N:NaN)}</b><i>revenue lost ÷ cancelled</i></div>
+    <div class="c"><small>Cancelled booking value</small><b class="dn">${php(L)}</b><i>from cancelled bookings</i></div>
+    <div class="c"><small>Average cancelled booking value</small><b>${php(N?L/N:NaN)}</b><i>cancelled booking value ÷ cancelled bookings</i></div>
     <div class="c"><small>Cancelled room nights</small><b>${fmt(sum(cx,r=>+r.room_nights||0))}</b><i>${pct(nights?sum(cx,r=>+r.room_nights||0)/nights:NaN)} of room nights</i></div>
     <div class="c"><small>Average window</small><b>${isNaN(avgW(cx))?'–':Math.round(avgW(cx))+' days'}</b><i>booking to check-in, cancelled</i></div>
-    <div class="c"><small>Largest single loss</small><b>${php(N?Math.max(...cx.map(lost)):NaN)}</b><i>one cancelled booking</i></div></div>`;
+</div>`;
   const maxC = Math.max(1, ...WIN.map(w=>cx.filter(r=>wname(r)===w[0]).length));
   const winRows = WIN.map(w => { const a=cx.filter(r=>wname(r)===w[0]), v=sum(a,lost);
     return [w[0],fmt(a.length),`${pct(N?a.length/N:NaN)}<span class="bx" style="width:${a.length/maxC*160}px"></span>`,php(v),a.length?php(v/a.length):'–']; });
@@ -1055,24 +1399,53 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const row = (name,a) => { const c=a.filter(Cn), v=sum(c,lost);
     return [name,fmt(a.length),fmt(c.length),`${pct(a.length?c.length/a.length:NaN)}<span class="bx" style="width:${a.length?c.length/a.length*160:0}px"></span>`,php(v),c.length?php(v/c.length):'–',c.length?Math.round(avgW(c))+' days':'–']; };
   const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m); };
-  const cats = grp(r=>r.source_category||'–').map(([n,a])=>row(`<b>${n}</b>`,a));
+  const channelGroup = source => {
+    const k=String(source||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(['bookingcom','agoda','priceline','agodapriceline','expedia','ctrip','tripcom','ctriptripcom','airbnb','airbnbapi'].some(x=>k.includes(x))) return 'OTA';
+    if(['websitebookingengine','website','bookingengine','walkin','email','phone','telephone','direct'].some(x=>k.includes(x))) return 'Direct';
+    if(['travelagency','travelagent','affiliated'].some(x=>k.includes(x))) return 'Travel Trade / Agency';
+    return 'Other / Special';
+  };
+  const groupOrder=['OTA','Direct','Travel Trade / Agency','Other / Special'];
+  const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r.src)===name)]).filter(([,a])=>a.length);
+  const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
   const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost)).map(([n,a])=>row(n,a));
   const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
+  const piePalette=['#147d86','#e0a23b','#5279a5','#8b6aa8'];
+  let pieCursor=0;
+  const pieSegments=groupedChannels.map(([name,a],i)=>{
+    const count=a.filter(Cn).length, pctValue=N?count/N*100:0;
+    const from=pieCursor; pieCursor+=pctValue;
+    return {name,count,pct:pctValue,color:piePalette[i%piePalette.length],from,to:pieCursor};
+  }).filter(x=>x.count>0);
+  const pieBackground=pieSegments.length
+    ? `conic-gradient(${pieSegments.map(x=>`${x.color} ${x.from}% ${x.to}%`).join(',')})`
+    : '#e7edf0';
+  const pieLegend=pieSegments.map(x=>`<div class="pie-legend-item"><span class="pie-dot" style="background:${x.color}"></span><span>${x.name}</span><b>${fmt(x.count)}</b><small>${x.pct.toFixed(1)}%</small></div>`).join('');
   const cell = n => n ? `<div style="margin:-8px -10px;padding:8px 10px;background:rgba(14,124,134,${(0.12+0.45*n/maxM).toFixed(2)})"><b>${n}</b></div>` : '<span class="mu">–</span>';
   const mcount = (s,w) => cx.filter(r=>r.src===s && wname(r)===w).length;
   const maxM = Math.max(1, ...srcList.flatMap(s=>WIN.map(w=>mcount(s,w[0]))));
   const mat = srcList.map(s => [s,...WIN.map(w=>cell(mcount(s,w[0]))),`<b>${cx.filter(r=>r.src===s).length}</b>`]);
   const top = [...cx].sort((a,b)=>lost(b)-lost(a)).slice(0,10).map(r=>[S.pm[r.property]?.name||r.property,r.src,r.room_type&&r.room_type!=='-'?r.room_type:'–',r.booking_date?fd(r.booking_date):'–',r.check_in?fd(r.check_in):'–',lead(r)==null?'–':lead(r)+' days',fmt(r.room_nights),`<span class="dn">${php(lost(r))}</span>`]);
   const srcOpts = [['ALL','All'],...[...new Set(all.map(r=>r.src))].sort().map(x=>[x,x])];
-  const H = ['','Bookings','Cancelled','Cancel rate','Revenue lost','Average lost','Average window'];
+  const H = ['','Bookings','Cancelled','Cancel rate','Cancelled booking value','Average cancelled value','Average window'];
   $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${chip('book','Booking date')}${chip('cin','Check-in date')}${spill('cs','Source',srcOpts,f.cs)}<button class="rst" data-a="rs">Reset filters</button></div>
-  <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Revenue lost = the booking value before cancellation (Suggested Deposit, since cancelled bookings show a Grand Total of 0). The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
+  <p class="note" style="margin:-6px 0 16px">Window = days between the booking date and the check-in date. Cancelled booking value is based on Suggested Deposit, since cancelled bookings show a Grand Total of 0; it is not confirmed actual revenue loss. The PMS export has no cancellation date, so the window shows how far ahead cancelled guests had booked.</p>
   ${cards}
-  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Value lost (₱)',vlabel:'Value lost',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the revenue lost.'})}
-  <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Revenue lost','Average lost'],winRows)}</div>
-  <div class="p"><h3>By booking source (OTA and direct)</h3>${tbl(H.map((x,i)=>i?x:'Source'),[...cats,...srcs])}</div>
+  ${dayGrid(cx, {kind:'c',mkey:'cm',title:f.cg==='cin'?'Cancelled bookings by check-in day':'Cancelled bookings by booking day',dayLabel:f.cg==='cin'?'Check-in day':'Booking day',l0:'Cancelled',l2:'Cancelled value (₱)',vlabel:'Cancelled value',key:f.cg==='cin'?(r=>r.check_in):(r=>r.booking_date),val:lost,extra:spill('cg','Group by',[['book','Booking day'],['cin','Check-in day']],f.cg),note:'Each hotel shows cancelled bookings, their room nights and the cancelled booking value.'})}
+  <div class="p"><h3>Cancellation window: how far ahead of check-in the cancelled bookings were made</h3>${tbl(['Window','Cancelled','Share','Cancelled booking value','Average cancelled value'],winRows)}</div>
+  <div class="p"><h3>Cancelled bookings by channel group</h3>
+    <div class="channel-pie-wrap">
+      <div class="channel-pie" role="img" aria-label="Cancelled bookings by channel group" style="background:${pieBackground}">
+        <div class="channel-pie-hole"><b>${fmt(N)}</b><small>cancelled</small></div>
+      </div>
+      <div class="channel-pie-legend">${pieLegend||'<span class="mu">No cancelled bookings in the selected filters.</span>'}</div>
+    </div>
+    ${tbl(H.map((x,i)=>i?x:'Channel group'),groupRows)}
+  </div>
+  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),srcs)}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
-  <div class="p"><h3>Largest losses, per cancelled reservation</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Revenue lost'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
+  <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
   bind(['cp','cs','cm','cg'], cancel);
 }
 
@@ -1328,7 +1701,7 @@ const A = {
   no: () => { S.pk.open=null; },
   ok: () => { const p=S.pk; if (!p.ds) return; S.rg[p.open]={s:p.ds,e:p.de||p.ds}; p.open=null; },
   rs: () => { S.rg={book:null,cin:null,cout:null}; S.pk.open=null; S.f.st=S.f.sr=S.f.cs='ALL'; S.f.cg='book'; S.dd=null; },
-  po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; },
+  po: o => { S.po=+o; }, ex: () => { S.ex=!S.ex; }, rptExport: () => exportReportExcel(), rptCSV: () => exportReportCSV(),
   dd: v => { const [kind,d,c]=v.split(':'); S.dd={kind,d:+d,c}; }, ddx: () => { S.dd=null; },
   us: async id => {
     const g = k => document.getElementById(k+'_'+id), u = {view_from:g('f').value||null, view_to:g('t').value||null};
