@@ -1215,12 +1215,12 @@ function buildReportData(){
       'Property':props[r.property]?.name||r.property,'Property Code':r.property,
       'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'',
       'Check-in':checkIn,'Check-out':checkOut,'Days Before Check-in':daysBefore,
-      'Stay Nights':stayNights,'Source':r.source||reservation.source||'',
-      'Room Nights':+r.room_nights||+reservation.room_nights||0,
-      'Original Room Revenue':+(r.room_revenue_total||0)
+     'Stay Nights':stayNights,
+'Source':r.source||reservation.source||'',
+'Original Room Revenue':Math.round(+(r.room_revenue_total||0)*100)/100
     };
   });
-  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
 }
 function reportNumber(value, digits=2){
   if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
