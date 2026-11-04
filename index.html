@@ -1047,68 +1047,38 @@ function compare(){
 function pace(){
   $('#ttl').textContent = 'Pace';
   if (!S.pace.length) return empty('No Pace history yet. Upload ADR reports daily to build historical Pace.');
-
-  const last=S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,'');
-  const y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8,10);
-  const target=new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1;
-  const nd=dim(ty,mo);
-  const M={};
-  S.pace.forEach(r=>{ M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no]=r; });
-
-  // Columns follow the day number of the daily upload sequence.
-  // Each cell reads the selected STAY MONTH's monthly OTB snapshot for that upload date.
-  const uploadISO=d=>`${y}-${pad(m)}-${pad(d)}`;
-  const cs=S.props.filter(p=>selectedCodes().includes(p.code)&&
-    S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
-  const val=(c,d)=>{
-    const r=M[c+'|'+uploadISO(d)+'|'+ty+'|'+mo];
-    return r?+r.ty_rooms_sold:null;
+  const last = S.pace.reduce((a,r)=>r.snapshot_date>a?r.snapshot_date:a,''), y=+last.slice(0,4), m=+last.slice(5,7), ld=+last.slice(8);
+  const M = {}; S.pace.forEach(r => M[r.property+'|'+r.snapshot_date+'|'+r.year_no+'|'+r.month_no] = r);
+  const target = new Date(y,m-1+S.po,1), ty=target.getFullYear(), mo=target.getMonth()+1, nd=dim(y,m), iso = d => `${y}-${pad(m)}-${pad(d)}`;
+  const cs = S.props.filter(p=>selectedCodes().includes(p.code)&&S.pace.some(r=>r.property===p.code&&r.year_no===ty&&r.month_no===mo));
+  const val = (c,d) => { const r=M[c+'|'+iso(d)+'|'+ty+'|'+mo]; return r ? +r.ty_rooms_sold : null; };
+  const cap = c => (S.pm[c]?.total_rooms||0) * dim(ty,mo);
+  const ser = {}; cs.forEach(p => ser[p.code] = Array.from({length:nd},(_,i)=>val(p.code,i+1)));
+  const tot = Array.from({length:nd},(_,i)=>{ const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0):null; });
+  const TA = cs.reduce((s,p)=>s+cap(p.code),0);
+  const cell = (i,v,a) => i+1>ld ? '<td></td>' : v==null ? '<td class="no"><small>no upload</small></td>' : `<td${i+1===ld?' class="now"':''}><b>${fmt(v)}</b><small>${pct(a?v/a:NaN)}</small></td>`;
+  const add = (arr,i) => {
+    if (i+1>ld) return '<td></td>'; const v=arr[i]; if (v==null) return '<td class="no"></td>';
+    let p=null; for (let j=i-1;j>=0;j--) if (arr[j]!=null){ p=arr[j]; break; }
+    if (p==null) return '<td><span class="mu">–</span></td>';
+    const d=v-p, c=d>0?'up':d<0?'dn':'mu', sg=d>0?'+':d<0?'−':'';
+    return `<td${i+1===ld?' class="now"':''}><b class="${c}">${sg}${fmt(Math.abs(d))}</b><small class="${c}">${sg}${p?(Math.abs(d)/p*100).toFixed(1):'0.0'}%</small></td>`;
   };
-  const cap=c=>(S.pm[c]?.total_rooms||0)*nd;
-  const ser={};
-  cs.forEach(p=>ser[p.code]=Array.from({length:nd},(_,i)=>val(p.code,i+1)));
-  const tot=Array.from({length:nd},(_,i)=>{
-    const v=cs.map(p=>ser[p.code][i]).filter(x=>x!=null);
-    return v.length?v.reduce((a,b)=>a+b,0):null;
-  });
-  const TA=cs.reduce((a,p)=>a+cap(p.code),0);
-  const cell=(i,v,a)=>{
-    if(i+1>ld)return '<td></td>';
-    if(v==null)return '<td class="no"><small>no upload</small></td>';
-    return `<td${i+1===ld?' class="now"':''}><b>${fmt(v)}</b><small>${pct(a?v/a:NaN)}</small></td>`;
-  };
-  const add=(arr,i)=>{
-    if(i+1>ld)return '<td></td>';
-    const v=arr[i]; if(v==null)return '<td class="no"></td>';
-    let prev=null;
-    for(let j=i-1;j>=0;j--)if(arr[j]!=null){prev=arr[j];break;}
-    if(prev==null)return '<td><span class="mu">–</span></td>';
-    const d=v-prev,cl=d>0?'up':d<0?'dn':'mu',sg=d>0?'+':d<0?'−':'';
-    return `<td${i+1===ld?' class="now"':''}><b class="${cl}">${sg}${fmt(Math.abs(d))}</b><small class="${cl}">${sg}${prev?(Math.abs(d)/prev*100).toFixed(1):'0.0'}%</small></td>`;
-  };
-  const days=Array.from({length:nd},(_,i)=>i);
-  const head=`<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[mo-1]} ${i+1}<br>${WD[new Date(ty,mo-1,i+1).getDay()]}</th>`).join('')}</tr>`;
-  let body=cs.map(p=>`<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
-  body+=`<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
-  body+=`<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
-  body+=cs.map(p=>`<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
-
-  const current=tot[ld-1], previous=[...tot.slice(0,ld-1)].reverse().find(v=>v!=null);
-  const delta=current==null||previous==null?null:current-previous;
-  const miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
-  const tabs=[0,1,2,3,4].map(o=>{
-    const dt=new Date(y,m-1+o,1),label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';
-    return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;
-  }).join('');
-  const deltaSign=delta>0?'+':delta<0?'−':'';
-  const deltaClass=delta>0?'up':delta<0?'dn':'mu';
-  $('#view').innerHTML=`<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
-   <div class="c"><small>Room nights on the books</small><b>${fmt(current)}</b><i>latest upload: ${last}</i></div>
-   <div class="c"><small>Occupancy for the month</small><b>${pct(TA?current/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
-   <div class="c"><small>Added since the previous upload</small><b class="${deltaClass}">${delta==null?'–':deltaSign+fmt(Math.abs(delta))}</b><i>${previous==null?'no previous upload':fmt(previous)+' before'}</i></div>
+  const days = Array.from({length:nd},(_,i)=>i);
+  const head = `<tr><th class="f">Hotel</th>${days.map(i=>`<th${i+1===ld?' class="now"':''}>${MN[m-1]} ${i+1}<br>${WD[new Date(y,m-1,i+1).getDay()]}</th>`).join('')}</tr>`;
+  let body = cs.map(p => `<tr><td class="f"><b>${p.name}</b><small>${p.total_rooms} rooms · ${fmt(cap(p.code))} room nights</small></td>${days.map(i=>cell(i,ser[p.code][i],cap(p.code))).join('')}</tr>`).join('');
+  body += `<tr class="tr"><td class="f"><b>All hotels</b><small>${fmt(TA)} room nights</small></td>${days.map(i=>cell(i,tot[i],TA)).join('')}</tr>`;
+  body += `<tr><td class="f"><button class="lb" data-a="ex">Added since last upload</button><small>click to see each hotel</small></td>${days.map(i=>add(tot,i)).join('')}</tr>`;
+  body += cs.map(p => `<tr class="sub"><td class="f"><b>${p.name}</b><small>added since last upload</small></td>${days.map(i=>add(ser[p.code],i)).join('')}</tr>`).join('');
+  const t=tot[ld-1], pr=[...tot.slice(0,ld-1)].reverse().find(x=>x!=null), miss=days.filter(i=>i+1<=ld&&tot[i]==null).length;
+  const tabs = [0,1,2,3,4].map(o=>{const dt=new Date(y,m-1+o,1);const label=o===0?'This month':(o===1?60:o===2?90:o===3?120:150)+' days';return `<button class="tab${S.po===o?' on':''}" data-a="po:${o}">${label} · ${MN[dt.getMonth()]}</button>`;}).join('');
+  $('#view').innerHTML = `<div class="bar">${sharedPropertyFilter()}${tabs}</div><div class="cards">
+   <div class="c"><small>Room nights on the books</small><b>${fmt(t)}</b><i>latest upload: ${last}</i></div>
+   <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
+   <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
    <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
   <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
-  <p class="note">Values are the total Accommodations Booked for the selected stay month, captured in each daily ADR upload. Only upload days with an uploaded report are populated; future upload days remain blank. Green = increase; red = decrease; yellow = no upload recorded.</p></div>`;
+  <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
 }
 
 /* Day grid (bookings received / cancelled): rows = days, columns = hotels. Click a number for the bookings behind it. */
@@ -1215,12 +1185,12 @@ function buildReportData(){
       'Property':props[r.property]?.name||r.property,'Property Code':r.property,
       'Cancellation Date':r.cancellation_date||'','Booking Date':r.booking_date||'',
       'Check-in':checkIn,'Check-out':checkOut,'Days Before Check-in':daysBefore,
-     'Stay Nights':stayNights,
-'Source':r.source||reservation.source||'',
-'Original Room Revenue':Math.round(+(r.room_revenue_total||0)*100)/100
+      'Stay Nights':stayNights,'Source':r.source||reservation.source||'',
+      'Room Nights':+r.room_nights||+reservation.room_nights||0,
+      'Original Room Revenue':+(r.room_revenue_total||0)
     };
   });
-  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
 }
 function reportNumber(value, digits=2){
   if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
@@ -1427,19 +1397,21 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const row = (name,a) => { const c=a.filter(Cn), v=sum(c,lost);
     return [name,fmt(a.length),fmt(c.length),`${pct(a.length?c.length/a.length:NaN)}<span class="bx" style="width:${a.length?c.length/a.length*160:0}px"></span>`,php(v),c.length?php(v/c.length):'–',c.length?Math.round(avgW(c))+' days':'–']; };
   const grp = k => { const m={}; rs.forEach(r=>(m[k(r)]??=[]).push(r)); return Object.entries(m); };
-  const channelGroup = source => {
-    const k=String(source||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    if(['bookingcom','agoda','priceline','agodapriceline','expedia','ctrip','tripcom','ctriptripcom','airbnb','airbnbapi'].some(x=>k.includes(x))) return 'OTA';
-    if(['websitebookingengine','website','bookingengine','walkin','email','phone','telephone','direct'].some(x=>k.includes(x))) return 'Direct';
-    if(['travelagency','travelagent','affiliated'].some(x=>k.includes(x))) return 'Travel Trade / Agency';
-    return 'Other / Special';
+  // Reporting groups: OTA / DIRECT / ENGO. El Nido Go is a separate
+  // channel group, but belongs under DIRECT in the individual-source table.
+  const channelGroup = r => {
+    const source=String(r.src||'').trim().toLowerCase();
+    if(source.replace(/[^a-z0-9]/g,'').includes('elnidogo')) return 'ENGO';
+    return String(r.source_category||'').toLowerCase()==='ota' ? 'OTA' : 'DIRECT';
   };
-  const groupOrder=['OTA','Direct','Travel Trade / Agency','Other / Special'];
-  const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r.src)===name)]).filter(([,a])=>a.length);
+  const groupOrder=['OTA','DIRECT','ENGO'];
+  const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r)===name)]);
   const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
-  const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost)).map(([n,a])=>row(n,a));
+  const individualGroup = r => String(r.source_category||'').toLowerCase()==='ota' ? 'OTA' : 'DIRECT';
+  const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost))
+    .map(([n,a])=>[individualGroup(a[0]),n,...row('',a).slice(1)]);
   const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
-  const piePalette=['#147d86','#e0a23b','#5279a5','#8b6aa8'];
+  const piePalette=['#147d86','#e0a23b','#5279a5'];
   let pieCursor=0;
   const pieSegments=groupedChannels.map(([name,a],i)=>{
     const count=a.filter(Cn).length, pctValue=N?count/N*100:0;
@@ -1471,7 +1443,7 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
     </div>
     ${tbl(H.map((x,i)=>i?x:'Channel group'),groupRows)}
   </div>
-  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(H.map((x,i)=>i?x:'Booking source'),srcs)}</div>
+  <div class="p"><h3>Cancellation performance by individual booking source</h3>${tbl(['Channel','Booking source',...H.slice(1)],srcs)}</div>
   <div class="p"><h3>Cancellation window by source (number of cancelled bookings)</h3>${srcList.length?tbl(['Source',...WIN.map(w=>w[0]),'Total'],mat):'<p class="mu">No cancellations in these filters.</p>'}</div>
   <div class="p"><h3>Highest-value cancelled reservations</h3>${top.length?tbl(['Property','Source','Room type','Booked','Check-in','Window','Nights','Cancelled booking value'],top):'<p class="mu">No cancellations in these filters.</p>'}</div>`;
   bind(['cp','cs','cm','cg'], cancel);
