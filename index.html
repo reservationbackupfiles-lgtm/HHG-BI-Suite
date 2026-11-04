@@ -1408,7 +1408,16 @@ const all = S.res.map(r => ({...r, src:normalizeSource(r.source)}));
   const groupedChannels=groupOrder.map(name=>[name,rs.filter(r=>channelGroup(r)===name)]);
   const groupRows=groupedChannels.map(([name,a])=>row(`<b>${name}</b>`,a));
   const individualGroup = r => String(r.source_category||'').toLowerCase()==='ota' ? 'OTA' : 'DIRECT';
-  const srcs = grp(r=>r.src).sort((a,b)=>sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost))
+  // Show only sources with at least one cancellation. Keep OTA rows together
+  // first, followed by DIRECT rows; within each group sort by cancelled value.
+  const srcs = grp(r=>r.src)
+    .filter(([,a])=>a.some(Cn))
+    .sort((a,b)=>{
+      const ga=individualGroup(a[1][0]), gb=individualGroup(b[1][0]);
+      const order={OTA:0,DIRECT:1};
+      return (order[ga]-order[gb]) ||
+        (sum(b[1].filter(Cn),lost)-sum(a[1].filter(Cn),lost));
+    })
     .map(([n,a])=>[individualGroup(a[0]),n,...row('',a).slice(1)]);
   const srcList = grp(r=>r.src).filter(([,a])=>a.some(Cn)).map(x=>x[0]);
   const piePalette=['#147d86','#e0a23b','#5279a5'];
