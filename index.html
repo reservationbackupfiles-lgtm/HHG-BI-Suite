@@ -518,6 +518,15 @@ $('#go').onclick = async () => {
   const {data,error} = await sb.auth.signInWithPassword({email, password});
   btn.disabled=false;btn.textContent='Sign in';
   if (error) { $('#lerr').textContent = error.message; toast('Sign-in failed. Check your email and password.','error'); return; }
+  if(data?.user){
+    const {error:logError}=await sb.from('user_activity_logs').insert({
+      user_id:data.user.id,
+      user_email:data.user.email||email,
+      action:'Login',
+      details:'Successful sign-in from login page'
+    });
+    if(logError)console.warn('Login activity was not saved:',logError.message);
+  }
   const meta=data?.user?.user_metadata||{};
   const expiresAt=meta.temporary_password_expires_at ? Date.parse(meta.temporary_password_expires_at) : 0;
   if(meta.must_change_password===true && expiresAt && Date.now()>expiresAt){
@@ -622,15 +631,6 @@ async function recordUserActivity(action, details='', targetUserId=null, targetE
   }catch(error){console.warn('User activity log failed:',error);}
 }
 sb.auth.onAuthStateChange((event, s) => {
-  if(event==='SIGNED_IN' && s?.user){
-    const u=s.user;
-    setTimeout(async()=>{
-      const {error}=await sb.from('user_activity_logs').insert({
-        user_id:u.id,user_email:u.email||'',action:'Login',details:'Successful sign-in'
-      });
-      if(error)console.warn('Login activity was not saved:',error.message);
-    },0);
-  }
   if(event==='PASSWORD_RECOVERY' && s){cur=s.user.id;setTimeout(()=>showPasswordGate('recovery'),0);return;}
   if (!s){ cur=null; S.user=null; $('#app').hidden=true; $('#login').hidden=false; $('#passwordGate').hidden=true; $('#em').value='';$('#pw').value=''; return; }
   const meta=s.user.user_metadata||{};
