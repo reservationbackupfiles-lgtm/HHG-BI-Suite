@@ -495,7 +495,7 @@ const pct = n => n==null||isNaN(n) ? '–' : (n*100).toFixed(1)+'%';
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 const today = () => new Date(Date.now()+8*36e5).toISOString().slice(0,10);
-const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportFrom:today().slice(0,7),reportTo:today().slice(0,7),reportPage:1,reportPageSize:10,f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
+const S = {role:'viewer',user:null,props:[],pm:{},adr:[],res:[],cancellations:[],pace:[],view:'dash',reportType:'pace',reportMonth:today().slice(0,7),reportPage:1,reportPageSize:10,f:{},rg:{book:null,cin:null,cout:null},pk:{open:null},po:0,ex:false,logDate:today(),logPage:1,selectedProps:null,draftProps:null,propMenuOpen:false,dsrc:{},dd:null};
 let charts = [];
 
 /* clock */
@@ -1161,25 +1161,22 @@ const reportMonthLabel = m => {
   if(!/^\d{4}-\d{2}$/.test(m||'')) return 'Selected month';
   const [y,mo]=m.split('-').map(Number); return `${MN[mo-1]} ${y}`;
 };
-const reportPeriodLabel = (from,to) => from===to ? reportMonthLabel(from) : `${reportMonthLabel(from)} – ${reportMonthLabel(to)}`;
 function buildReportData(){
-  const from=S.reportFrom||today().slice(0,7), to=S.reportTo||from, type=S.reportType||'pace', codes=selectedCodes();
-  const inRange = value => { const key=String(value||'').slice(0,7); return key>=from && key<=to; };
-  const period=reportPeriodLabel(from,to);
+  const month=S.reportMonth||today().slice(0,7), type=S.reportType||'pace', codes=selectedCodes();
   const props=Object.fromEntries(S.props.map(p=>[p.code,p]));
   if(type==='pace'){
-    const rows=S.pace.filter(r=>inRange(`${r.year_no}-${pad(r.month_no)}`)&&codes.includes(r.property))
+    const rows=S.pace.filter(r=>r.year_no===+month.slice(0,4)&&r.month_no===+month.slice(5,7)&&codes.includes(r.property))
       .sort((a,b)=>a.snapshot_date.localeCompare(b.snapshot_date)||a.property.localeCompare(b.property));
     const detail=rows.map(r=>({
-      'Stay Month':`${r.year_no}-${pad(r.month_no)}`,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
+      'Stay Month':month,'Property':props[r.property]?.name||r.property,'Property Code':r.property,
       'Upload Date':r.snapshot_date,'Room Nights on the Books':+r.ty_rooms_sold||0,
       'Room Night Capacity':(props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no),
       'Occupancy on Books':((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))?((+r.ty_rooms_sold||0)/((props[r.property]?.total_rooms||0)*dim(r.year_no,r.month_no))):null
     }));
-    return {title:`Pace History - ${period}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
+    return {title:`Pace History - ${reportMonthLabel(month)}`,rows:detail,headers:['Stay Month','Property','Property Code','Upload Date','Room Nights on the Books','Room Night Capacity','Occupancy on Books'],note:'Historical daily snapshots for the selected stay month. Upload Date is the date the ADR/Pace file was uploaded; it is not the stay date.'};
   }
   if(type==='monthly'){
-    const source=S.adr.filter(r=>inRange(`${r.year}-${pad(r.month)}`)&&codes.includes(r.property));
+    const source=S.adr.filter(r=>`${r.year}-${pad(r.month)}`===month&&codes.includes(r.property));
     const grouped=new Map();
     source.forEach(r=>{
       const x=grouped.get(r.property)||{property:r.property,sold:0,revenue:0,available:0};
@@ -1190,24 +1187,24 @@ function buildReportData(){
       'Room Nights Sold':x.sold,'Room Revenue':x.revenue,'Available Room Nights':x.available,
       'Occupancy':x.available?x.sold/x.available:null,'ADR':x.sold?x.revenue/x.sold:null,'RevPAR':x.available?x.revenue/x.available:null
     })).sort((a,b)=>a.Property.localeCompare(b.Property));
-    return {title:`Monthly Performance - ${period}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
+    return {title:`Monthly Performance - ${reportMonthLabel(month)}`,rows,headers:['Property','Property Code','Room Nights Sold','Room Revenue','Available Room Nights','Occupancy','ADR','RevPAR'],note:'Monthly operating results from ADR daily records. Occupancy = room nights sold ÷ available room nights.'};
   }
   if(type==='reservations'){
-    const rows=S.res.filter(r=>inRange(r.check_in)&&codes.includes(r.property))
+    const rows=S.res.filter(r=>String(r.check_in||'').slice(0,7)===month&&codes.includes(r.property))
       .sort((a,b)=>String(a.check_in||'').localeCompare(String(b.check_in||'')));
     const data=rows.map(r=>({
       'Reservation Number':r.reservation_no||'','Property':props[r.property]?.name||r.property,'Property Code':r.property,
       'Guest Name':r.guest_name||'','Room Type':r.room_type||'','Check-in':r.check_in||'','Check-out':r.check_out||'',
       'Room Nights':+r.room_nights||0,'Revenue':+r.grand_total||0,'Status':r.status||'','Source':r.source||''
     }));
-    return {title:`Reservations Register - Check-in ${period}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
+    return {title:`Reservations Register - Check-in ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Property','Property Code','Guest Name','Room Type','Check-in','Check-out','Room Nights','Revenue','Status','Source'],note:'Reservations are selected by Check-in month, not by booking date. Cancelled reservations remain included if present in the reservations table.'};
   }
   const reservationByKey=new Map();
   S.res.forEach(r=>{
     const key=[r.property,String(r.reservation_no||r.reservation_id||'')].join('|');
     if(key!=='|') reservationByKey.set(key,r);
   });
-  const rows=S.cancellations.filter(r=>inRange(r.cancellation_date)&&codes.includes(r.property))
+  const rows=S.cancellations.filter(r=>String(r.cancellation_date||'').slice(0,7)===month&&codes.includes(r.property))
     .sort((a,b)=>String(a.cancellation_date||'').localeCompare(String(b.cancellation_date||'')));
   const data=rows.map(r=>{
     const reservation=reservationByKey.get([r.property,String(r.reservation_no||r.reservation_id||'')].join('|'))||{};
@@ -1229,7 +1226,7 @@ function buildReportData(){
       'Original Room Revenue':+(r.room_revenue_total||0)
     };
   });
-  return {title:`Cancellations Register - ${period}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
+  return {title:`Cancellations Register - ${reportMonthLabel(month)}`,rows:data,headers:['Reservation Number','Guest Name','Property','Property Code','Cancellation Date','Booking Date','Check-in','Check-out','Days Before Check-in','Stay Nights','Source','Room Nights','Original Room Revenue'],note:'Cancellations are selected by Cancellation Date. Check-in and Check-out are taken from the cancellation record, with a fallback lookup in the reservations register by reservation number and property. Days Before Check-in = Check-in date minus Cancellation Date; negative values mean cancellation occurred after check-in.'};
 }
 function reportNumber(value, digits=2){
   if(value===null||value===undefined||value===''||!Number.isFinite(Number(value))) return '—';
@@ -1280,11 +1277,10 @@ function reports(){
   $('#view').innerHTML=`
     <div class="bar">${sharedPropertyFilter()}
       <div class="filter-pill"><span>Report</span><select id="reportType">${reportOptions.map(([v,l])=>`<option value="${v}"${S.reportType===v?' selected':''}>${l}</option>`).join('')}</select></div>
-      <div class="filter-pill"><span>From</span><input id="reportFrom" type="month" value="${reportEsc(S.reportFrom)}" style="width:135px;border:0;padding:4px;background:transparent;color:var(--ink);font-weight:700"></div>
-      <div class="filter-pill"><span>To</span><input id="reportTo" type="month" value="${reportEsc(S.reportTo)}" style="width:135px;border:0;padding:4px;background:transparent;color:var(--ink);font-weight:700"></div>
+      <div class="filter-pill"><span>Month</span><input id="reportMonth" type="month" value="${reportEsc(S.reportMonth)}" style="width:145px;border:0;padding:4px;background:transparent;color:var(--ink);font-weight:700"></div>
     </div>
     <div class="cards">
-      <div class="c"><small>Report</small><b style="font-size:17px">${reportEsc(data.title)}</b><i>${reportEsc(period)}</i></div>
+      <div class="c"><small>Report</small><b style="font-size:17px">${reportEsc(data.title)}</b><i>Selected reporting period</i></div>
       <div class="c"><small>Records</small><b>${fmt(total)}</b><i>${S.selectedProps===null?'All properties':selectedCodes().length+' selected properties'}</i></div>
       <div class="c"><small>Export</small><b style="font-size:17px">Excel / CSV</b><i>Download all filtered records</i></div>
     </div>
@@ -1301,8 +1297,7 @@ function reports(){
       ${pager}
     </div>`;
   $('#reportType').onchange=e=>{S.reportType=e.target.value;S.reportPage=1;reports();};
-  $('#reportFrom').onchange=e=>{if(e.target.value){S.reportFrom=e.target.value;if(S.reportTo<S.reportFrom)S.reportTo=S.reportFrom;S.reportPage=1;reports();}};
-  $('#reportTo').onchange=e=>{if(e.target.value){S.reportTo=e.target.value;if(S.reportTo<S.reportFrom)S.reportFrom=S.reportTo;S.reportPage=1;reports();}};
+  $('#reportMonth').onchange=e=>{if(e.target.value){S.reportMonth=e.target.value;S.reportPage=1;reports();}};
   const sizeSelect=$('#reportPageSize');
   if(sizeSelect) sizeSelect.onchange=e=>{S.reportPageSize=+e.target.value;S.reportPage=1;reports();};
   document.querySelectorAll('[data-rpt-page]').forEach(b=>b.onclick=()=>{S.reportPage=+b.dataset.rptPage;reports();});
@@ -1330,7 +1325,7 @@ function exportReportExcel(){
     })]));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(matrix),'Pace Matrix');
   }
-  XLSX.writeFile(wb,`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportFrom||today().slice(0,7)}_to_${S.reportTo||S.reportFrom||today().slice(0,7)}.xlsx`);
+  XLSX.writeFile(wb,`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.xlsx`);
   toast('Excel report downloaded.');
 }
 function exportReportCSV(){
@@ -1342,7 +1337,7 @@ function exportReportCSV(){
   const ws=XLSX.utils.json_to_sheet(csvRows,{header:data.headers});
   const csv=XLSX.utils.sheet_to_csv(ws), blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
-  a.href=url;a.download=`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportFrom||today().slice(0,7)}_to_${S.reportTo||S.reportFrom||today().slice(0,7)}.csv`;
+  a.href=url;a.download=`HHG_${(S.reportType||'report').toUpperCase()}_${S.reportMonth||today().slice(0,7)}.csv`;
   document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   toast('CSV report downloaded.');
 }
