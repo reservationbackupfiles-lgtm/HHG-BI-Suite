@@ -1576,7 +1576,7 @@ async function loadAdminUsers(){
   const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
   if(error){box.innerHTML=`<p class="err">${error.message}</p>`;return;}
   const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
-  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account and emails the temporary login credentials. Temporary password expires after 24 hours. User must change it at first login. Never put service-role or email-provider keys in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
+  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account and emails the temporary login credentials. Temporary password expires after 7 days (168 hours). User must change it at first login. Never put service-role or email-provider keys in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
   box.querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
     const id=btn.dataset.userId,sel=box.querySelector(`.user-role[data-user-id="${id}"]`),role=sel?.value;
     btn.disabled=true;btn.textContent='Saving…';
@@ -1590,7 +1590,7 @@ async function loadAdminUsers(){
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
     if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created and invitation email sent. The temporary password expires in 24 hours; the user must change it at first login.'; toast('Account created and invitation email sent.');
+    msg.textContent='Account created and invitation email sent. The temporary password expires in 7 days (168 hours); the user must change it at first login.'; toast('Account created and invitation email sent.');
     $('#newUserEmail').value='';$('#newUserPassword').value='';await loadAdminUsers();
   };
 }
@@ -1740,7 +1740,7 @@ async function users(){
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
     if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created and invitation email sent. The temporary password expires in 24 hours; the user must change it at first login.'; toast('Account created and invitation email sent.');
+    msg.textContent='Account created and invitation email sent. The temporary password expires in 7 days (168 hours); the user must change it at first login.'; toast('Account created and invitation email sent.');
     await users();
   };
 }
