@@ -100,7 +100,7 @@ pre{background:var(--ink);color:#cfe0e4;padding:12px;border-radius:6px;min-heigh
 .upload-card,.summary-card,.log-card,.users-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px;margin-bottom:16px;min-width:0}
 .upload-card h3,.summary-card h3,.log-card h3,.users-card h3{margin:0 0 12px;font-size:15px}
 .upload-field{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed #b8cbd1;border-radius:7px;padding:12px;margin:8px 0 12px;color:var(--mut);background:#fff;cursor:pointer}
-.user-create{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;background:#f8fbfc}.user-create h4{margin:0 0 10px}.user-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}.user-create-fields>div{min-width:0}.user-create-fields input,.user-create-fields select,.user-role{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}.user-create-fields label{display:block;margin-bottom:5px;font-size:12px;color:var(--mut)}.user-table-wrap{max-width:100%;overflow-x:auto}.user-table-wrap table{min-width:560px}.user-role{min-width:100px}.user-save{padding:7px 10px;white-space:nowrap}/* Small auto-dismissing confirmation toast */
+.user-create{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;background:#f8fbfc}.user-create h4{margin:0 0 10px}.user-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}.user-create-fields>div{min-width:0}.user-create-fields input,.user-create-fields select,.user-role{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}.user-create-fields label{display:block;margin-bottom:5px;font-size:12px;color:var(--mut)}.user-table-wrap{max-width:100%;overflow-x:auto}.user-table-wrap table{min-width:560px}.user-role{min-width:100px}.user-save{padding:7px 10px;white-space:nowrap}.user-actions{display:flex;gap:6px;flex-wrap:wrap}.user-actions .btn{padding:7px 9px;font-size:12px;white-space:nowrap}.user-status{display:inline-block;padding:4px 8px;border-radius:20px;font-size:12px;font-weight:700}.user-status.active{background:#e6f5ec;color:#176b3a}.user-status.inactive{background:#fff0ed;color:#a33b2b}.btn-danger{background:#a33b2b!important;color:#fff!important}.btn-secondary{background:#e8eef0!important;color:#18323a!important}@media(max-width:700px){.user-create-fields{grid-template-columns:1fr}.user-actions{min-width:140px}}/* Small auto-dismissing confirmation toast */
 #toastHost{position:fixed;top:18px;right:18px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 28px));pointer-events:none}
 .toast{display:flex;align-items:flex-start;gap:10px;padding:12px 15px;border-radius:9px;background:#fff;color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--up);box-shadow:0 8px 26px rgba(16,36,43,.18);font-size:13px;line-height:1.4;animation:toastIn .18s ease-out;transition:opacity .22s,transform .22s}
 .toast.error{border-left-color:var(--dn)}.toast .toast-mark{font-weight:800;color:var(--up)}.toast.error .toast-mark{color:var(--dn)}.toast.hide{opacity:0;transform:translateX(12px)}
@@ -1573,25 +1573,50 @@ async function loadLog(){
 }
 async function loadAdminUsers(){
   const box=$('#userbox'); if(!box)return;
-  const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
+  const {data,error}=await sb.functions.invoke('admin-create-user',{body:{action:'list-users'}});
   if(error){box.innerHTML=`<p class="err">${error.message}</p>`;return;}
-  const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
-  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account and emails the temporary login credentials. Temporary password expires after 7 days (168 hours). User must change it at first login. Never put service-role or email-provider keys in this website.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
+  const users=data?.users||[];
+  const rows=users.map(u=>[
+    u.email||'—',
+    `<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option><option value="viewer" ${u.role!=='admin'?'selected':''}>Viewer</option></select>`,
+    u.id===S.user.id?'<span class="mu">Current user</span>':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`,
+    `<span class="user-status ${u.active?'active':'inactive'}">${u.active?'Active':'Deactivated'}</span>`,
+    u.id===S.user.id?'<span class="mu">—</span>':`<div class="user-actions"><button type="button" class="btn user-reset" data-user-id="${u.id}" data-email="${encodeURIComponent(u.email||'')}">Reset password</button><button type="button" class="btn ${u.active?'btn-danger':'btn-secondary'} user-toggle" data-user-id="${u.id}" data-active="${u.active?'true':'false'}">${u.active?'Deactivate':'Activate'}</button></div>`
+  ]);
+  box.innerHTML=`<div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com" required></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters" required></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Temporary password expires after 7 days (168 hours). User must change it at first login.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Role action','Status','Account actions'],rows):'<p class="mu">No profiles found.</p>'}</div>`;
   box.querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
-    const id=btn.dataset.userId,sel=box.querySelector(`.user-role[data-user-id="${id}"]`),role=sel?.value;
+    const id=btn.dataset.userId,role=box.querySelector(`.user-role[data-user-id="${id}"]`)?.value;
     btn.disabled=true;btn.textContent='Saving…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
     if(error){toast('Could not update role: '+error.message,'error');btn.disabled=false;btn.textContent='Save role';return;}
-    btn.textContent='Saved'; toast('Role updated successfully.');
+    toast('Role updated.');await loadAdminUsers();
+  });
+  box.querySelectorAll('.user-toggle').forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.userId,active=btn.dataset.active==='true';
+    if(!confirm(`${active?'Deactivate':'Activate'} this account? ${active?'The user will no longer be able to sign in.':'The user will be able to sign in again.'}`))return;
+    btn.disabled=true;btn.textContent='Updating…';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'set-status',user_id:id,active:!active}});
+    if(error){toast('Could not update account status: '+error.message,'error');btn.disabled=false;btn.textContent=active?'Deactivate':'Activate';return;}
+    toast(`Account ${active?'deactivated':'activated'}.`);await loadAdminUsers();
+  });
+  box.querySelectorAll('.user-reset').forEach(btn=>btn.onclick=async()=>{
+    const email=decodeURIComponent(btn.dataset.email||'');
+    const password=prompt(`Set a new temporary password for ${email}. Minimum 8 characters:`);
+    if(password===null)return;
+    if(password.length<8){toast('Password must contain at least 8 characters.','error');return;}
+    if(!confirm(`Reset password for ${email}? The user will be required to change it at next login.`))return;
+    btn.disabled=true;btn.textContent='Resetting…';
+    const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'reset-password',user_id:btn.dataset.userId,password}});
+    if(error){toast('Password reset failed: '+error.message,'error');btn.disabled=false;btn.textContent='Reset password';return;}
+    toast('Temporary password updated. Share it with the user securely.');btn.disabled=false;btn.textContent='Reset password';
   });
   $('#createUser').onclick=async()=>{
     const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
-    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';toast('Enter a valid email and a password with at least 8 characters.','error');return;}
+    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';toast(msg.textContent,'error');return;}
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
-    if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created and invitation email sent. The temporary password expires in 7 days (168 hours); the user must change it at first login.'; toast('Account created and invitation email sent.');
-    $('#newUserEmail').value='';$('#newUserPassword').value='';await loadAdminUsers();
+    if(error){msg.textContent='Account creation failed: '+error.message;toast(msg.textContent,'error');btn.disabled=false;btn.textContent='Create account';return;}
+    msg.textContent='Account created. Temporary password expires in 7 days; user must change it at first login.';toast('Account created.');await loadAdminUsers();
   };
 }
 
@@ -1723,26 +1748,8 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
 async function users(){
   $('#ttl').textContent='Users';
   if(S.role!=='admin')return empty('Admins only.');
-  const {data,error}=await sb.from('profiles').select('id,email,role').order('email');
-  if(error)return empty(error.message);
-  const rows=(data||[]).map(u=>[u.email||'—',`<select class="user-role" data-user-id="${u.id}" ${u.id===S.user.id?'disabled':''}><option value="admin" ${(u.role||'viewer')==='admin'?'selected':''}>Admin</option><option value="viewer" ${(u.role||'viewer')==='viewer'?'selected':''}>Viewer</option></select>`,u.id===S.user.id?'Current user':`<button type="button" class="btn user-save" data-user-id="${u.id}">Save role</button>`]);
-  $('#view').innerHTML=`<div class="p users-card"><h3>Users and access</h3><div class="user-create"><h4>Add account</h4><div class="user-create-fields"><div><label for="newUserEmail">Email</label><input id="newUserEmail" type="email" placeholder="name@company.com"></div><div><label for="newUserPassword">Temporary password</label><input id="newUserPassword" type="password" minlength="8" placeholder="At least 8 characters"></div><div><label for="newUserRole">Role</label><select id="newUserRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div><button type="button" class="btn" id="createUser">Create account</button></div><p class="note">Creates the account in Supabase Auth and assigns the selected role.</p><p id="userActionMsg" class="note"></p></div><div class="user-table-wrap">${rows.length?tbl(['Email','Role','Action'],rows):'<p class="mu">No profiles found.</p>'}</div></div>`;
-  $('#view').querySelectorAll('.user-save').forEach(btn=>btn.onclick=async()=>{
-    const id=btn.dataset.userId,role=$('#view').querySelector(`.user-role[data-user-id="${id}"]`)?.value;
-    btn.disabled=true;btn.textContent='Saving…';
-    const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
-    if(error){toast('Could not update role: '+error.message,'error');btn.disabled=false;btn.textContent='Save role';return;}
-    btn.textContent='Saved'; toast('Role updated successfully.');
-  });
-  $('#createUser').onclick=async()=>{
-    const email=$('#newUserEmail').value.trim().toLowerCase(),password=$('#newUserPassword').value,role=$('#newUserRole').value,msg=$('#userActionMsg');
-    if(!email||password.length<8){msg.textContent='Enter a valid email and a password with at least 8 characters.';toast('Enter a valid email and a password with at least 8 characters.','error');return;}
-    const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
-    const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
-    if(error){msg.textContent='Account creation failed: '+error.message;toast('Account creation failed: '+error.message,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created and invitation email sent. The temporary password expires in 7 days (168 hours); the user must change it at first login.'; toast('Account created and invitation email sent.');
-    await users();
-  };
+  $('#view').innerHTML='<div class="p users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Loading users…</p></div></div>';
+  await loadAdminUsers();
 }
 /* clicks: filters, date picker, pace tabs */
 const A = {
