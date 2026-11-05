@@ -701,7 +701,13 @@ async function load(){
       fetchAll('cancellations').catch(e => { console.warn('Cancellation data unavailable for Daily Pickup.', e); return []; })
     ]);
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
-    S.props = rawProps.map(p=>({...p, code:codeByName[p.name]||String(p.id), total_rooms:+p.rooms||0, active:true})).sort((a,b)=>(a.sort||0)-(b.sort||0));
+    // HHG approved room inventory overrides (Nov 5, 2026).
+    // These values are the dashboard's source of truth for property capacity.
+    const ROOM_INVENTORY = {HHO:41,HSR:44,NBR:25,NBG:18,NBV:15,PCL:36,HZG:28,JBH:14,HVV:39};
+    S.props = rawProps.map(p=>{
+      const code=codeByName[p.name]||String(p.id);
+      return {...p,code,total_rooms:ROOM_INVENTORY[code]??(+p.rooms||0),active:true};
+    }).sort((a,b)=>(a.sort||0)-(b.sort||0));
     S.pm = Object.fromEntries(S.props.map(p=>[p.code,p]));
     const codeById = Object.fromEntries(S.props.map(p=>[String(p.id),p.code]));
     S.adr = rawAdr.map(r=>{const d=String(r.stay_date||'');return {property:codeById[String(r.property_id)],year:+d.slice(0,4),month:+d.slice(5,7),rooms_sold:+r.rooms_sold||0,room_revenue:+r.room_revenue||0,rooms_available:+r.rooms_available||0};}).filter(r=>r.property&&r.year&&r.month);
@@ -1622,7 +1628,7 @@ async function doUpload(){
       let n=0,note='',snap=null;
       if(rep==='ADR'){
         const r=Imp.parseAdr(rows,prop.code);
-        const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
+        const mapped=r.rows.map(x=>({property_id:propertyId,stay_date:`${x.year}-${pad(x.month)}-01`,rooms_sold:x.rooms_sold||0,rooms_available:(S.pm[prop.code]?.total_rooms||+prop.rooms||0)*dim(x.year,x.month),room_revenue:x.room_revenue||0}));
         if(!mapped.length)throw new Error('No ADR rows found.');
         await chunked(c=>sb.from('adr_daily').upsert(c,{onConflict:'property_id,stay_date'}),mapped);
         snap=$('#snap').value||today();
