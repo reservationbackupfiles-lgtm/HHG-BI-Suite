@@ -579,6 +579,7 @@ function showPasswordGate(mode='first-login'){
     }
 
     if(data?.user) S.user=data.user;
+    await recordUserActivity('Password Changed','User changed password successfully');
 
     gate.hidden=true;
     gate.innerHTML='';
@@ -600,9 +601,36 @@ function showPasswordGate(mode='first-login'){
     }
   };
 }
-$('#out').onclick = () => sb.auth.signOut();
+$('#out').onclick = async () => {
+  await recordUserActivity('Logout','User signed out');
+  await sb.auth.signOut();
+};
 let cur = null;
+async function recordUserActivity(action, details='', targetUserId=null, targetEmail=null){
+  const actor = S.user;
+  if(!actor?.id) return;
+  try{
+    const {error}=await sb.from('user_activity_logs').insert({
+      user_id:actor.id,
+      user_email:actor.email||'',
+      action,
+      details,
+      target_user_id:targetUserId,
+      target_email:targetEmail
+    });
+    if(error) console.warn('User activity log was not saved:',error.message);
+  }catch(error){console.warn('User activity log failed:',error);}
+}
 sb.auth.onAuthStateChange((event, s) => {
+  if(event==='SIGNED_IN' && s?.user){
+    const u=s.user;
+    setTimeout(async()=>{
+      const {error}=await sb.from('user_activity_logs').insert({
+        user_id:u.id,user_email:u.email||'',action:'Login',details:'Successful sign-in'
+      });
+      if(error)console.warn('Login activity was not saved:',error.message);
+    },0);
+  }
   if(event==='PASSWORD_RECOVERY' && s){cur=s.user.id;setTimeout(()=>showPasswordGate('recovery'),0);return;}
   if (!s){ cur=null; S.user=null; $('#app').hidden=true; $('#login').hidden=false; $('#passwordGate').hidden=true; $('#em').value='';$('#pw').value=''; return; }
   const meta=s.user.user_metadata||{};
@@ -1561,7 +1589,7 @@ async function admin(){
     <button class="btn" id="up">Upload selected files</button></section>
     <section class="summary-card"><h3>Today's summary</h3><div id="summary" class="admin-summary"><div class="c"><small>Properties updated</small><b>—</b><i>Loading</i></div><div class="c"><small>Files received</small><b>—</b><i>Loading</i></div></div><p class="note" id="waiting"></p><pre id="log">Ready.</pre></section></div>
     <section class="log-card"><div class="log-filter"><div class="date-filter"><label for="ld">Log date</label><input id="ld" type="date" value="${S.logDate}"></div></div><h3>Upload log</h3><div id="logbox"><p class="mu">Loading logs…</p></div><p class="note">Every upload is recorded with date, time, user, property, report, rows and result.</p></section>
-    <section class="users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Manage users in the Users tab.</p></div></section>`;
+`;
   $('#fAll').onchange = showSelectedFiles;
   $('#up').onclick = async () => {
     const files=[...$('#fAll').files];
@@ -1572,7 +1600,6 @@ async function admin(){
   };
   $('#ld').onchange = e => { S.logDate = e.target.value || today(); S.logPage = 1; loadLog(); };
   await loadLog();
-  await loadAdminUsers();
 }
 async function loadLog(){
   const d=S.logDate,{data,error}=await sb.from('upload_log').select('*').gte('created_at',d+'T00:00:00+08:00').lt('created_at',addDay(d)+'T00:00:00+08:00').order('created_at',{ascending:false});
@@ -1611,6 +1638,7 @@ async function loadAdminUsers(){
     btn.disabled=true;btn.textContent='Saving…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'update-role',user_id:id,role}});
     if(error){toast('Could not update role: '+error.message,'error');btn.disabled=false;btn.textContent='Save role';return;}
+    await recordUserActivity('Role Changed',`Role set to ${role}`,id,box.querySelector(`.user-role[data-user-id="${id}"]`)?.closest('tr')?.querySelector('td')?.textContent||'');
     toast('Role updated.');await loadAdminUsers();
   });
   box.querySelectorAll('.user-toggle').forEach(btn=>btn.onclick=async()=>{
@@ -1619,6 +1647,7 @@ async function loadAdminUsers(){
     btn.disabled=true;btn.textContent='Updating…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'set-status',user_id:id,active:!active}});
     if(error){toast('Could not update account status: '+error.message,'error');btn.disabled=false;btn.textContent=active?'Deactivate':'Activate';return;}
+    await recordUserActivity(active?'Account Deactivated':'Account Activated','Account status changed',id,decodeURIComponent(box.querySelector(`.user-toggle[data-user-id="${id}"]`)?.dataset.email||'')||null);
     toast(`Account ${active?'deactivated':'activated'}.`);await loadAdminUsers();
   });
   box.querySelectorAll('.user-reset').forEach(btn=>btn.onclick=async()=>{
@@ -1630,6 +1659,7 @@ async function loadAdminUsers(){
     btn.disabled=true;btn.textContent='Resetting…';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{action:'reset-password',user_id:btn.dataset.userId,password}});
     if(error){toast('Password reset failed: '+error.message,'error');btn.disabled=false;btn.textContent='Reset password';return;}
+    await recordUserActivity('Password Reset','Admin reset temporary password; 7-day validity restarted',btn.dataset.userId,email);
     toast('Temporary password updated. Share it with the user securely.');btn.disabled=false;btn.textContent='Reset password';
   });
   $('#createUser').onclick=async()=>{
@@ -1638,7 +1668,9 @@ async function loadAdminUsers(){
     const btn=$('#createUser');btn.disabled=true;btn.textContent='Creating…';msg.textContent='';
     const {error}=await sb.functions.invoke('admin-create-user',{body:{email,password,role}});
     if(error){msg.textContent='Account creation failed: '+error.message;toast(msg.textContent,'error');btn.disabled=false;btn.textContent='Create account';return;}
-    msg.textContent='Account created. Temporary password expires in 7 days; user must change it at first login.';toast('Account created.');await loadAdminUsers();
+    msg.textContent='Account created. Temporary password expires in 7 days; user must change it at first login.';
+    await recordUserActivity('Account Created',`New account created with role ${role}`,null,email);
+    toast('Account created.');await loadAdminUsers();
   };
 }
 
@@ -1767,11 +1799,35 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
   await load();L('Done.');$('#up').disabled=false;$('#up').textContent='Upload selected files';await loadLog();
 }
 /* Users (admin) */
+async function loadUserActivity(){
+  const box=$('#activitybox'); if(!box)return;
+  const from=$('#activityFrom')?.value||today();
+  const to=$('#activityTo')?.value||from;
+  if(to<from){box.innerHTML='<p class="err">End date must be on or after start date.</p>';return;}
+  const {data,error}=await sb.from('user_activity_logs').select('*')
+    .gte('created_at',from+'T00:00:00+08:00')
+    .lt('created_at',addDay(to)+'T00:00:00+08:00')
+    .order('created_at',{ascending:false}).limit(500);
+  if(error){box.innerHTML=`<p class="err">${reportEsc(error.message)}</p><p class="note">If the table has not been created yet, run the supplied SQL setup in Supabase.</p>`;return;}
+  if(!data?.length){box.innerHTML='<p class="mu">No user activity recorded for this period.</p>';return;}
+  const rows=data.map(r=>[
+    new Date(r.created_at).toLocaleString('en-PH',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Asia/Manila'}),
+    reportEsc(r.user_email||'—'),
+    reportEsc(r.action||'—'),
+    reportEsc(r.details||'—'),
+    reportEsc(r.target_email||'—')
+  ]);
+  box.innerHTML=tbl(['Date / Time','User','Activity','Details','Target user'],rows)+`<p class="note">Showing ${data.length} most recent records in the selected period (maximum 500).</p>`;
+}
 async function users(){
   $('#ttl').textContent='Users';
   if(S.role!=='admin')return empty('Admins only.');
-  $('#view').innerHTML='<div class="p users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Loading users…</p></div></div>';
+  $('#view').innerHTML='<div class="p users-card"><h3>Users and access</h3><div id="userbox"><p class="mu">Loading users…</p></div></div><div class="p" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h3 style="margin:0">User Activity Logs</h3><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="activityFrom">From</label><input id="activityFrom" type="date" value="${today()}"><label for="activityTo">To</label><input id="activityTo" type="date" value="${today()}"><button type="button" class="tab" id="activityRefresh">Refresh</button></div></div><p class="note">Records successful logins, user sign-outs, password changes, and account administration actions.</p><div id="activitybox"><p class="mu">Loading activity…</p></div></div>';
   await loadAdminUsers();
+  await loadUserActivity();
+  $('#activityRefresh').onclick=loadUserActivity;
+  $('#activityFrom').onchange=loadUserActivity;
+  $('#activityTo').onchange=loadUserActivity;
 }
 /* clicks: filters, date picker, pace tabs */
 const A = {
