@@ -509,7 +509,7 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
   <button class="nav" data-v="pace"><span class="nav-mark">⌁</span>Pace</button>
   <button class="nav" data-v="res"><span class="nav-mark">▤</span>Reservations</button>
   <button class="nav" data-v="cancel"><span class="nav-mark">↘</span>Cancellations</button>
-  <button class="nav" data-v="recon" id="navRecon" hidden><span class="nav-mark">◫</span>Reconciliation</button>
+  <button class="nav" data-v="recon" id="navRecon" hidden><span class="nav-mark">◫</span>Revenue Monitoring</button>
   <button class="nav" data-v="reports"><span class="nav-mark">▧</span>Reports</button>
 
   <button class="nav" data-v="admin" id="navAdmin" hidden><span class="nav-mark">⇧</span>Upload &amp; Logs</button>
@@ -953,14 +953,14 @@ document.addEventListener('keydown',e=>{
 })();
 
 function recon(){
-  $('#ttl').textContent='Reconciliation · Revenue & Transaction Monitoring';
+  $('#ttl').textContent='Revenue Monitoring';
   if(S.role!=='admin') return empty('Admins only.');
   $('#view').innerHTML=`
     <div class="recon-intro p">
-      <div class="recon-eyebrow">REVENUE &amp; TRANSACTION MONITORING</div>
-      <h2>Understand what makes up reported revenue.</h2>
-      <p>Read-only monitoring of Cloudbeds transaction records. Original transaction values and descriptions are preserved. Payments, taxes, fees, refunds and adjustments are displayed separately and are not treated as room or ancillary revenue.</p>
-      <div class="recon-status"><span class="recon-status-dot"></span>Transaction-level monitoring · Admin access only</div>
+      <div class="recon-eyebrow">HHG MANAGEMENT REPORTING</div>
+      <h2>Understand where revenue comes from and how Cloudbeds transactions are classified.</h2>
+      <p>Read-only view of Cloudbeds transactions across HHG properties. The planned management view separates room revenue, ancillary revenue, taxes, fees, payments, refunds and adjustments. Payments and taxes will not be counted as earned hotel revenue.</p>
+      <div class="recon-status"><span class="recon-status-dot"></span>Read-only management monitoring · Admin access only</div>
     </div>
     <div class="bar">
       <div><label for="txProp">Property</label><select id="txProp"><option value="ALL">All properties</option>${S.props.map(p=>`<option value="${String(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
@@ -1006,12 +1006,12 @@ function recon(){
       box.innerHTML=`
         <div class="cards">
           <div class="c"><small>RECORDS MATCHING FILTERS</small><b>${fmt(filtered.length)}</b><i>From latest ${fmt(rows.length)} loaded records</i></div>
-          <div class="c"><small>SIGNED TRANSACTION AMOUNT</small><b>${money(amount)}</b><i>Not a revenue total; includes different transaction types</i></div>
+          <div class="c"><small>SIGNED TRANSACTION AMOUNT (NOT REVENUE)</small><b>${money(amount)}</b><i>Not a revenue total; includes different transaction types</i></div>
           <div class="c"><small>VOID / REFUND / ADJUSTMENT FLAGS</small><b>${fmt(voided)} / ${fmt(refunded)} / ${fmt(adjusted)}</b><i>Cloudbeds flags; not accounting conclusions</i></div>
         </div>
         <section class="p">
-          <h3>Transaction Details</h3>
-          <p class="note">Read-only source records. Transaction date, business date and service date are kept distinct. Payments, taxes, fees, refunds and adjustments are not combined into revenue KPIs.</p>
+          <h3>Cloudbeds Transaction Details</h3>
+          <p class="note">Read-only source records. Transaction date, business date and service date are kept distinct. Revenue, taxes, fees, payments, refunds and adjustments must be classified separately before management totals are published.</p>
           <div style="overflow:auto">
             <table>
               <thead><tr><th>Property</th><th>Transaction date<br>Business date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description / Code</th><th>Amount</th><th>Flags</th></tr></thead>
@@ -1028,7 +1028,7 @@ function recon(){
               </tr>`).join('')}</tbody>
             </table>
           </div>
-          <p class="note">Showing up to 300 matching rows from the latest 1,000 records returned. This first version is a transaction browser; revenue classification and reconciled totals will be added only after validation against Cloudbeds reports.</p>
+          <p class="note">Showing up to 300 matching rows from the latest 1,000 records returned. Revenue totals and category breakdowns are intentionally not calculated yet. They will be enabled after Cloudbeds transaction types, room revenue types, ancillary categories, taxes and fees are validated across all properties.</p>
         </section>`;
     };
     ['txProp','txType','txSearch'].forEach(id=>$('#'+id).addEventListener(id==='txSearch'?'input':'change',render));
@@ -1042,13 +1042,13 @@ function escapeHtml(value){
 }
 const V = {dash, compare, pace, res, cancel, recon, reports, admin, users};
 function show(v){
-  // Reconciliation is restricted to authenticated admin users.
+  // Revenue Monitoring is restricted to authenticated admin users.
   if (v === 'recon' && S.role !== 'admin') {
     S.view = 'dash';
     charts.forEach(c=>c.destroy()); charts = [];
     document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v==='dash'));
     $('#ttl').textContent = 'Access restricted';
-    $('#view').innerHTML = '<p class="mu">The Reconciliation / Revenue &amp; Transaction Monitoring page is available to administrators only.</p>';
+    $('#view').innerHTML = '<p class="mu">The Revenue Monitoring page is available to administrators only.</p>';
     return;
   }
   if (!V[v]) return;
