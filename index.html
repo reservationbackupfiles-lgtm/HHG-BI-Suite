@@ -422,74 +422,6 @@ th{font-size:11px}
   .cards{gap:7px}
 }
 
-
-
-/* HHG BI SUITE — Emerald / Ivory / Champagne visual system (additive layer) */
-:root{
- --ink:#202B27;--sea:#075B46;--sun:#D6AD62;--bg:#F7F5EF;--line:#E5E2D9;
- --mut:#68756F;--up:#16834A;--dn:#C83E36;--card:#FFFFFF;
- --hhg-emerald:#063D32;--hhg-forest:#075B46;--hhg-gold:#D6AD62;--hhg-ivory:#F7F5EF;
-}
-html{background:var(--bg)}
-body{background:var(--bg);color:var(--ink);font-family:Manrope,Inter,system-ui,sans-serif;letter-spacing:-.01em}
-#login{background:radial-gradient(ellipse at 20% 15%,#0b6049 0%,#063D32 48%,#042c25 100%)}
-.box{border:1px solid rgba(214,173,98,.35);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.22);padding:36px}
-.box h1{letter-spacing:.045em;color:var(--hhg-emerald)}
-.box h1:after{content:'';display:block;width:42px;height:3px;background:var(--hhg-gold);margin:12px auto 0;border-radius:4px}
-#app{grid-template-columns:248px minmax(0,1fr);background:var(--bg)}
-aside{background:linear-gradient(180deg,#063D32 0%,#052F28 100%);color:#E7EFEA;padding:24px 15px 18px;gap:6px;border-right:1px solid rgba(214,173,98,.2);box-shadow:5px 0 22px rgba(6,61,50,.06)}
-.brand{font-size:17px;letter-spacing:.075em;padding:2px 13px 26px;color:#fff}
-.brand b{color:var(--hhg-gold)}
-.nav{display:flex;align-items:center;gap:12px;width:100%;min-height:43px;padding:10px 13px;border:1px solid transparent;border-radius:9px;color:#D6E4DC;font-size:13px;font-weight:600;transition:background .15s,border-color .15s,color .15s}
-.nav-mark{width:19px;flex:0 0 19px;text-align:center;color:#D6AD62;font-size:16px;opacity:.95}
-.nav:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav.on{background:#075B46;border-color:rgba(214,173,98,.32);color:#fff;box-shadow:inset 3px 0 0 var(--hhg-gold)}
-.nav.on .nav-mark{color:#F1D49C}
-.who{border-top:1px solid rgba(255,255,255,.12);padding:16px 10px 0;margin-top:auto;color:#D6E4DC}
-.who a{color:var(--hhg-gold);font-weight:700}
-main{padding:0 34px 36px;min-width:0}
-.top{padding:24px 0 20px;border-bottom:1px solid var(--line);margin-bottom:22px}
-.top h1{font-size:24px;font-weight:800;letter-spacing:-.035em;color:var(--hhg-emerald)}
-.clock{font-size:12px;color:var(--ink)}
-.clock small{color:var(--mut)}
-.btn{background:var(--hhg-forest);border-radius:8px;padding:10px 16px;box-shadow:0 3px 8px rgba(7,91,70,.12);transition:background .15s,transform .15s}
-.btn:hover{background:var(--hhg-emerald);transform:translateY(-1px)}
-input,select{border-color:var(--line);border-radius:8px;background:#fff;color:var(--ink);min-height:38px}
-input:focus,select:focus{border-color:var(--hhg-forest);outline:3px solid rgba(7,91,70,.1)}
-.bar{gap:12px;margin-bottom:20px}
-.c,.p,.upload-card,.summary-card,.log-card,.users-card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(32,43,39,.025)}
-.c{padding:17px 18px;transition:transform .15s,border-color .15s,box-shadow .15s}
-.c:hover{transform:translateY(-2px);border-color:#D9CBAE;box-shadow:0 8px 20px rgba(32,43,39,.06)}
-.c small{font-size:10.5px;letter-spacing:.075em;color:#68756F}
-.c b{font-size:25px;color:var(--hhg-emerald);letter-spacing:-.04em;margin-top:5px}
-.c i{font-size:11.5px;color:var(--mut)}
-.p{padding:19px;margin-bottom:18px}
-.p h3{font-size:14px;font-weight:800;color:var(--hhg-emerald);letter-spacing:-.01em}
-.two{gap:18px;margin-bottom:18px}
-table th{color:#68756F;font-size:11px;text-transform:uppercase;letter-spacing:.045em;background:#FAF9F5}
-table td{font-size:12.5px;color:#34413B}
-table tr:hover td{background:#FBFAF6}
-tr.tot td{border-top:2px solid var(--hhg-emerald)}
-.tab{border-color:var(--line);border-radius:8px;color:var(--ink)}
-.tab.on{background:var(--hhg-forest);border-color:var(--hhg-forest)}
-.rst{border-color:var(--line);border-radius:8px}
-.pill{border-color:var(--line);border-radius:9px}
-.prop-filter-toggle{border-color:var(--line);border-radius:8px}
-.prop-filter-run,.ap{background:var(--hhg-forest);border-color:var(--hhg-forest)}
-.prop-filter-run:hover,.ap:hover{background:var(--hhg-emerald)}
-.dy.in{background:#E8F1EC;color:#075B46}.dy.ed{background:var(--hhg-forest)}
-.dm .now{background:#EEF4EF}.dm .no{background:#FBF2DF}
-.recon-intro{background:linear-gradient(120deg,#fff 0%,#F8F6EF 100%);border-color:#E6DDC9;padding:24px}
-.recon-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;color:#98713A;margin-bottom:8px}
-.recon-intro h2{font-size:21px;line-height:1.25;color:var(--hhg-emerald);margin:0 0 8px;letter-spacing:-.035em}
-.recon-intro p{max-width:820px;color:#5E6A63;margin:0;font-size:13px}
-.recon-status{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:7px 10px;border:1px solid #E7DDC8;border-radius:999px;background:#FBF8F0;color:#80602E;font-size:11px;font-weight:700}
-.recon-status-dot{width:7px;height:7px;border-radius:50%;background:#D6AD62}
-.recon-cards{margin-top:16px}
-@media(max-width:900px){#app{grid-template-columns:210px minmax(0,1fr)}main{padding:0 20px 28px}}
-@media(max-width:760px){#app{grid-template-columns:1fr}aside{position:sticky;top:0;z-index:80;height:auto;flex-direction:row;flex-wrap:wrap;padding:10px;gap:5px}.brand{width:100%;padding:4px 8px 9px}.nav{width:auto;flex:1 1 auto;min-height:37px;padding:8px 10px;font-size:11px}.nav-mark{display:none}.who{width:100%;margin:4px 0 0;padding:8px 8px 0}main{padding:0 13px 20px}.top{padding:16px 0}.top h1{font-size:21px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.c{padding:13px}.c b{font-size:21px}.recon-intro{padding:17px}}
-@media(max-width:420px){.nav{flex:1 1 calc(50% - 5px);justify-content:flex-start}.cards{grid-template-columns:1fr 1fr}.top{align-items:flex-start}}
-
 </style>
 </head>
 <body>
@@ -504,16 +436,16 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 <aside>
   <div class="brand">HHG <b>BI SUITE</b></div>
 
-  <button class="nav" data-v="dash"><span class="nav-mark">▦</span>Dashboard</button>
-  <button class="nav" data-v="compare"><span class="nav-mark">⇄</span>Compare</button>
-  <button class="nav" data-v="pace"><span class="nav-mark">⌁</span>Pace</button>
-  <button class="nav" data-v="res"><span class="nav-mark">▤</span>Reservations</button>
-  <button class="nav" data-v="cancel"><span class="nav-mark">↘</span>Cancellations</button>
-  <button class="nav" data-v="recon" id="navRecon" hidden><span class="nav-mark">◫</span>Reconciliation</button>
-  <button class="nav" data-v="reports"><span class="nav-mark">▧</span>Reports</button>
+  <button class="nav" data-v="dash">Dashboard</button>
+  <button class="nav" data-v="compare">Compare</button>
+  <button class="nav" data-v="pace">Pace</button>
+  <button class="nav" data-v="reports">Reports</button>
+  <button class="nav" data-v="res">Reservations</button>
+  <button class="nav" data-v="cancel">Cancellations</button>
 
-  <button class="nav" data-v="admin" id="navAdmin" hidden><span class="nav-mark">⇧</span>Upload &amp; Logs</button>
-  <button class="nav" data-v="users" id="navUsers" hidden><span class="nav-mark">♙</span>Users</button>
+  <button class="nav" data-v="transactions" id="navTransactions" hidden>Reconciliation</button>
+  <button class="nav" data-v="admin" id="navAdmin" hidden>Upload &amp; logs</button>
+  <button class="nav" data-v="users" id="navUsers" hidden>Users</button>
 
   <div class="who">
     <span id="me"></span>
@@ -733,7 +665,7 @@ async function start(user){
   S.role = p?.role || 'viewer';
 
   $('#me').textContent = user.email + ' (' + S.role + ')';
-  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navRecon').hidden = S.role !== 'admin';
+  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navTransactions').hidden = S.role !== 'admin';
 
   $('#acc').textContent =
     S.role !== 'admin' && (p?.view_from || p?.view_to)
@@ -952,40 +884,24 @@ document.addEventListener('keydown',e=>{
   document.addEventListener('pointercancel',finish);
 })();
 
-function recon(){
-  $('#ttl').textContent='Reconciliation';
-  $('#view').innerHTML = `
-    <div class="recon-intro p">
-      <div class="recon-eyebrow">REVENUE &amp; TRANSACTION MONITORING</div>
-      <h2>Understand what makes up reported revenue.</h2>
-      <p>This workspace is designed for read-only monitoring of Cloudbeds transaction records. It will separate room revenue, ancillary revenue, taxes, fees, payments, refunds and adjustments without changing source transactions.</p>
-      <div class="recon-status"><span class="recon-status-dot"></span>Module scaffold — data mapping and validation pending</div>
-    </div>
-    <div class="cards recon-cards">
-      <div class="c"><small>ROOM REVENUE</small><b>—</b><i>Awaiting validated transaction mapping</i></div>
-      <div class="c"><small>ANCILLARY REVENUE</small><b>—</b><i>Awaiting category mapping</i></div>
-      <div class="c"><small>TAXES &amp; FEES</small><b>—</b><i>Shown separately from revenue</i></div>
-      <div class="c"><small>PAYMENTS &amp; REFUNDS</small><b>—</b><i>Cash movement, not revenue totals</i></div>
-    </div>
-    <div class="two">
-      <section class="p"><h3>Revenue Breakdown</h3><p class="note">Room, food &amp; beverage, transportation, tours and other ancillary categories will appear here after the source fields are validated.</p></section>
-      <section class="p"><h3>OTA &amp; Direct Channels</h3><p class="note">Reservation-source attribution will be shown separately from payment method. OTA commission calculations are excluded from this phase.</p></section>
-    </div>
-    <section class="p"><h3>Transaction Details</h3><p class="note">Searchable, read-only transaction records will be added after the Expanded Transaction Report field mapping is confirmed across all properties.</p></section>
-    <p class="note">No accounting entries, edits, approvals or adjustments are performed in this module.</p>`;
+
+async function transactions(){
+  $('#ttl').textContent='Reconciliation · Revenue & Transaction Monitoring';
+  if(S.role!=='admin') return empty('Admins only.');
+  $('#view').innerHTML='<div class="bar"><div><label>Property</label><select id="txProp"><option value="ALL">All properties</option>'+S.props.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')+'</select></div><div><label>Transaction type</label><select id="txType"><option value="ALL">All types</option></select></div><div><label>Search</label><input id="txSearch" placeholder="Guest, reservation, description…"></div><button class="btn" id="txRefresh">Refresh</button></div><div id="txContent"><p class="mu">Loading transaction records…</p></div>';
+  const box=$('#txContent');
+  const {data,error}=await sb.from('transaction_details').select('id,property_id,guest_name,reservation_no,reservation_source,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,pos_charge_category,item_service_category,transaction_amount,transaction_description,cloudbeds_transaction_code_description').order('transaction_date',{ascending:false}).limit(500);
+  if(error){box.innerHTML=`<p class="err">${error.message}</p><p class="note">If the table does not exist yet, run HHG_BI_Transactions_Setup.sql in Supabase first.</p>`;return;}
+  const rows=data||[], types=[...new Set(rows.map(r=>r.transaction_type).filter(Boolean))].sort();
+  $('#txType').innerHTML='<option value="ALL">All types</option>'+types.map(t=>`<option>${t}</option>`).join('');
+  const render=()=>{const prop=$('#txProp').value,type=$('#txType').value,q=$('#txSearch').value.trim().toLowerCase();const filtered=rows.filter(r=>(prop==='ALL'||String(r.property_id)===prop)&&(type==='ALL'||r.transaction_type===type)&&(!q||[r.guest_name,r.reservation_no,r.transaction_description,r.cloudbeds_transaction_code_description,r.reservation_source].some(v=>String(v||'').toLowerCase().includes(q))));
+  const sum=filtered.reduce((a,r)=>a+(Number(r.transaction_amount)||0),0), valid=filtered.filter(r=>!(/^(yes|true|1)$/i.test(String(r.void_flag||''))));
+  box.innerHTML=`<div class="cards"><div class="c"><small>Records displayed</small><b>${fmt(filtered.length)}</b><i>Latest 500 loaded records</i></div><div class="c"><small>Transaction amount · signed</small><b>${php(filtered.reduce((a,r)=>a+(Number(r.transaction_amount)||0),0))}</b><i>Not a revenue total; includes payments/credits</i></div><div class="c"><small>Voided records</small><b>${fmt(filtered.length-valid.length)}</b><i>Flagged by Cloudbeds</i></div></div><div class="p"><h3>Transaction details</h3><p class="note">Read-only view. Signed transaction amount is shown as exported by Cloudbeds. Payments, credits, taxes, refunds and adjustments are not combined into a revenue KPI.</p><div style="overflow:auto"><table><thead><tr><th>Date / Business date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>Flags</th></tr></thead><tbody>${filtered.slice(0,300).map(r=>`<tr><td>${r.transaction_date||'—'}<br><small>${r.business_date||'—'}</small></td><td>${r.guest_name||'—'}<br><small>${r.reservation_no||'—'}</small></td><td>${r.reservation_source||'—'}</td><td>${r.transaction_type||'—'}</td><td>${r.tax_type||r.fee_type||r.pos_charge_category||r.item_service_category||'—'}</td><td>${r.transaction_description||r.cloudbeds_transaction_code_description||'—'}</td><td>${php(r.transaction_amount)}</td><td>${[r.void_flag==='Yes'?'Void':'',r.refund_flag==='Yes'?'Refund':'',r.adjustment_flag==='Yes'?'Adjustment':''].filter(Boolean).join(' · ')||'—'}</td></tr>`).join('')}</tbody></table></div><p class="note">Showing up to 300 matching rows from the latest 500 loaded. More records can be paginated in a later performance pass.</p></div>`;};
+  ['txProp','txType','txSearch'].forEach(id=>$('#'+id).addEventListener('input',render));$('#txRefresh').onclick=()=>transactions();render();
 }
-const V = {dash, compare, pace, res, cancel, recon, reports, admin, users};
+
+const V = {dash, compare, pace, reports, res, cancel, admin, users, transactions};
 function show(v){
-  // Reconciliation is restricted to authenticated admin users.
-  if (v === 'recon' && S.role !== 'admin') {
-    S.view = 'dash';
-    charts.forEach(c=>c.destroy()); charts = [];
-    document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v==='dash'));
-    $('#ttl').textContent = 'Access restricted';
-    $('#view').innerHTML = '<p class="mu">The Reconciliation / Revenue &amp; Transaction Monitoring page is available to administrators only.</p>';
-    return;
-  }
-  if (!V[v]) return;
   S.view = v; charts.forEach(c=>c.destroy()); charts = [];
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v===v));
   V[v]();
@@ -1035,7 +951,7 @@ function mk(id, type, labels, sets, fm, horiz){
       plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+fm(horiz?c.parsed.x:c.parsed.y)}}}, scales:{[horiz?'x':'y']:{ticks:{callback:v=>fm(v)}}}}}));
 }
 const ds = (label,data,c) => ({label, data, backgroundColor:c, borderColor:c});
-const C1='#075B46', C2='#D6AD62', C3='#063D32', mfmt = v => v>=1e6 ? (v/1e6).toFixed(1)+'M' : fmt(v);
+const C1='#0E7C86', C2='#F2B134', C3='#10242B', mfmt = v => v>=1e6 ? (v/1e6).toFixed(1)+'M' : fmt(v);
 
 /* Dashboard */
 function dash(){
@@ -1720,7 +1636,8 @@ async function showSelectedFiles(){
         ADR: 'Average Daily Rate (ADR)',
         Reservations: 'Reservations by Booking Date',
         Cancellations: 'Cancellations Report',
-        Pace: 'Pace Report'
+        Pace: 'Pace Report',
+        Transactions: 'Expanded Transaction Report with Details'
       }[rep];
 
       return `${f.name} → ${
@@ -1753,7 +1670,7 @@ async function doUpload(){
       if(logError)L(`Log warning: ${logError.message}`);
     }
   }
-  const order={ADR:0,Reservations:1,Pace:2,Cancellations:3};
+  const order={ADR:0,Reservations:1,Pace:2,Cancellations:3,Transactions:4};
   jobs.sort((a,b)=>order[a.rep]-order[b.rep]||(a.generated<b.generated?-1:a.generated>b.generated?1:0));
   for(const {rep,rows,file} of jobs){
     try{
@@ -1806,6 +1723,12 @@ console.log('RESERVATION IMPORT DIAGNOSTIC', {
         );
         n=mapped.length;
         note=`Cancellation report imported for ${prop.code}`;
+      } else if(rep==='Transactions'){
+        if(S.role!=='admin') throw new Error('Only admins can import transaction records.');
+        const r=Imp.parseTransactions(rows,propertyId,file.name);
+        const mapped=r.rows.map(x=>({...x,imported_by:S.user.email}));
+        await chunked(c=>sb.from('transaction_details').upsert(c,{onConflict:'property_id,source_file,source_row_number',ignoreDuplicates:true}),mapped);
+        n=mapped.length;note=r.note;
       }
 
       L(`${file.name} → ${rep}: ${n} rows saved (${note}).`);
