@@ -507,6 +507,16 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 @media(max-width:850px){.rm-filters{grid-template-columns:1fr 1fr}.rm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-section-grid{grid-template-columns:1fr}}
 @media(max-width:480px){.rm-filters{grid-template-columns:1fr}.rm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+.rm-tabs{display:flex;gap:4px;overflow-x:auto;white-space:nowrap;padding:5px;background:#fff;border:1px solid #e7e1d5;border-radius:13px;margin:10px 0 12px}
+.rm-tabs a{display:inline-flex;align-items:center;padding:9px 12px;border-radius:9px;color:#23463b;font-size:11px;font-weight:650;text-decoration:none}
+.rm-tabs a:first-child{background:#075b46;color:#fff}
+.rm-tabs a:hover{background:#edf4ef}
+.rm-tx-counts{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0}
+.rm-tx-counts span{font-size:11px;color:#64736c}
+.rm-tx-counts b{color:#173f34;font-size:14px;margin-left:4px}
+.rm-tx-details{margin-top:8px}
+.rm-tx-details summary{cursor:pointer;color:#075b46;font-size:11px;font-weight:650}
 </style>
 </head>
 <body>
@@ -987,6 +997,9 @@ function recon(){
       <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
       <button class="btn" id="txRefresh" type="button" style="margin:0;height:36px">↻ Apply Filters</button>
     </div>
+<nav class="rm-tabs" aria-label="Revenue monitoring sections">
+      <a href="#rmOverview">Overview</a><a href="#rmBreakdown">Revenue by Property</a><a href="#rmBreakdown">OTA Revenue</a><a href="#rmTaxes">Taxes &amp; Fees</a><a href="#rmPayments">Payments &amp; Collections</a><a href="#rmRefunds">Refunds &amp; Adjustments</a><a href="#rmTransactions">Transaction Details</a><a href="#rmAlerts">Monitoring Alerts</a>
+    </nav>
     <div id="txContent"><p class="mu">Loading revenue summary…</p></div>
   `;
   const box=$('#txContent');
@@ -1066,32 +1079,36 @@ function recon(){
       if(c==='Adjustments')x.adjustments+=a;
     });
     box.innerHTML=`
-      <div class="rm-kpis">
+      <div class="rm-kpis" id="rmOverview">
         <div class="c"><small>NET REVENUE*</small><b>${money(netRevenue)}</b><i>Room + ancillary less refunds/adjustments</i></div>
         <div class="c"><small>ROOM REVENUE</small><b>${money(room)}</b><i>Classified room charges</i></div>
         <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Items, add-ons and services</i></div>
-        <div class="c"><small>TAXES</small><b>${money(taxes)}</b><i>Shown separately</i></div>
+        <div class="c" id="rmTaxes"><small>TAXES</small><b>${money(taxes)}</b><i>Shown separately</i></div>
         <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Shown separately</i></div>
-        <div class="c"><small>PAYMENTS</small><b>${money(payments)}</b><i>Collections, not revenue</i></div>
-        <div class="c"><small>REFUNDS / ADJUSTMENTS</small><b>${money(refunds+adjustments)}</b><i>Refunds ${money(refunds)} · Adj. ${money(adjustments)}</i></div>
+        <div class="c" id="rmPayments"><small>PAYMENTS</small><b>${money(payments)}</b><i>Collections, not revenue</i></div>
+        <div class="c" id="rmRefunds"><small>REFUNDS / ADJUSTMENTS</small><b>${money(refunds+adjustments)}</b><i>Refunds ${money(refunds)} · Adj. ${money(adjustments)}</i></div>
       </div>
-      <section class="p">
+      <section class="p" id="rmBreakdown">
         <h3>Revenue by Property</h3>
         <div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Room Revenue</th><th>Ancillary</th><th>Taxes</th><th>Fees</th><th>Refunds</th><th>Adjustments</th><th>Net Revenue*</th></tr></thead>
         <tbody>${[...propertyTotals.entries()].map(([id,x])=>`<tr><td>${escapeHtml(x.name)}</td><td>${money(x.room)}</td><td>${money(x.ancillary)}</td><td>${money(x.taxes)}</td><td>${money(x.fees)}</td><td>${money(x.refunds)}</td><td>${money(x.adjustments)}</td><td><b>${money(x.room+x.ancillary-x.refunds-x.adjustments)}</b></td></tr>`).join('')}
         <tr><th>Total</th><th>${money(room)}</th><th>${money(ancillary)}</th><th>${money(taxes)}</th><th>${money(fees)}</th><th>${money(refunds)}</th><th>${money(adjustments)}</th><th>${money(netRevenue)}</th></tr></tbody></table></div>
         <p class="note">*Provisional estimate based on current transaction classification and signed amounts. Validate classification and refund/adjustment sign conventions before using as official management net revenue.</p>
       </section>
-      <section class="p"><h3>Transaction Monitoring</h3><div class="cards">
+      <section class="p" id="rmAlerts"><h3>Transaction Monitoring</h3><div class="cards">
         <div class="c"><small>TRANSACTIONS IN PERIOD</small><b>${fmt(filtered.length)}</b><i>Filtered by business date, fallback transaction date</i></div>
         <div class="c"><small>UNCLASSIFIED</small><b>${fmt(unclassified)}</b><i>Require mapping review</i></div>
         <div class="c"><small>VOID FLAGS</small><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><i>Source flags only</i></div>
       </div></section>
-      <section class="p"><h3>Cloudbeds Transaction Details</h3><p class="note">Read-only source records. Date filters use Business Date where available, otherwise Transaction Date. Showing the first 300 matching rows.</p>
+      <section id="rmTransactions" class="p"><h3>Transaction Details</h3>
+        <div class="rm-tx-counts"><span>Transactions <b>${fmt(filtered.length)}</b></span><span>Unclassified <b>${fmt(unclassified)}</b></span><span>Void flags <b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b></span></div>
+        <details class="rm-tx-details"><summary>View transaction records (up to 300 rows)</summary>
+        <p class="note">Read-only source records. Date filters use Business Date where available, otherwise Transaction Date.</p>
         <div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Transaction Date</th><th>Business Date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description / Code</th><th>Amount</th></tr></thead>
         <tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.transaction_date)||r.transaction_date||'—')}</td><td>${escapeHtml(dateKey(r.business_date)||r.business_date||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${escapeHtml(r.transaction_description||r.cloudbeds_transaction_code_description||r.cloudbeds_transaction_code||'—')}</td><td>${money(r.transaction_amount)}</td></tr>`).join('')||'<tr><td colspan="9" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div>
-        <p class="note">Loaded ${fmt(allRows.length)} transaction records from the database. The table displays up to 300 matching rows.</p>
-      </section>`;
+        </details>
+      </section>
+      <p class="note">Loaded ${fmt(allRows.length)} transaction records from the database. *Net Revenue is provisional pending validation of transaction classification and sign conventions.</p>`;
   };
   ['rmFrom','rmTo','rmProperty'].forEach(id=>$('#'+id).addEventListener('change',render));
   $('#txRefresh').onclick=loadTransactions;
