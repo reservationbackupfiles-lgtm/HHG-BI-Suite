@@ -959,16 +959,14 @@ function recon(){
     <div class="recon-intro p">
       <div class="recon-eyebrow">HHG MANAGEMENT REPORTING</div>
       <h2>Understand where revenue comes from and how Cloudbeds transactions are classified.</h2>
-      <p>Read-only view of Cloudbeds transactions across HHG properties. The planned management view separates room revenue, ancillary revenue, taxes, fees, payments, refunds and adjustments. Payments and taxes will not be counted as earned hotel revenue.</p>
+      <p>Read-only management summary across HHG properties. Revenue, ancillary sales, taxes, fees, payments, refunds and adjustments are shown separately. Payments and taxes are not treated as earned hotel revenue.</p>
       <div class="recon-status"><span class="recon-status-dot"></span>Read-only management monitoring · Admin access only</div>
     </div>
     <div class="bar">
-      <div><label for="txProp">Property</label><select id="txProp"><option value="ALL">All properties</option>${S.props.map(p=>`<option value="${String(p.id)}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
-      <div><label for="txType">Transaction type</label><select id="txType"><option value="ALL">All types</option></select></div>
-      <div style="flex:1;min-width:190px"><label for="txSearch">Search</label><input id="txSearch" type="search" placeholder="Guest, reservation, description or code"></div>
-      <button class="btn" id="txRefresh" type="button" style="margin-top:18px">Refresh</button>
+      <div style="flex:1;min-width:220px"><label for="txSearch">Search transaction details</label><input id="txSearch" type="search" placeholder="Guest, property, reservation, description or code"></div>
+      <button class="btn" id="txRefresh" type="button" style="margin-top:18px">↻ Refresh Data</button>
     </div>
-    <div id="txContent"><p class="mu">Loading transaction records…</p></div>
+    <div id="txContent"><p class="mu">Loading revenue summary…</p></div>
   `;
   const box=$('#txContent');
   const loadTransactions=async()=>{
@@ -982,56 +980,74 @@ function recon(){
       return;
     }
     const rows=data||[];
-    const typeSelect=$('#txType');
-    const selectedType=typeSelect.value;
-    const types=[...new Set(rows.map(r=>r.transaction_type).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
-    typeSelect.innerHTML='<option value="ALL">All types</option>'+types.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-    if(types.includes(selectedType))typeSelect.value=selectedType;
-
+    const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const propName=id=>S.props.find(p=>String(p.id)===String(id))?.name||String(id||'—');
+    const isFlag=v=>/^(yes|true|1)$/i.test(String(v||''));
+    const textOf=r=>[r.transaction_type,r.room_revenue_type,r.tax_type,r.fee_type,r.pos_charge_category,r.item_service_category,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code].filter(Boolean).join(' ').toLowerCase();
+    const amountOf=r=>Number(r.transaction_amount)||0;
+    const classify=r=>{
+      const t=textOf(r), type=String(r.transaction_type||'').toLowerCase();
+      if(isFlag(r.void_flag)) return 'Void';
+      if(isFlag(r.refund_flag)||/refund/.test(t)) return 'Refunds';
+      if(/payment|deposit|collection|paid/.test(type)) return 'Payments';
+      if(r.tax_type||/tax|vat/.test(type)) return 'Taxes';
+      if(r.fee_type||/fee|service charge/.test(type)) return 'Fees';
+      if(r.room_revenue_type||/room charge|accommodation|lodging/.test(t)) return 'Room Revenue';
+      if(r.pos_charge_category||r.item_service_category||/add.?on|item|service|pos charge|food|beverage|transport|tour|laundry|massage|rental/.test(t)) return 'Ancillary Revenue';
+      if(isFlag(r.adjustment_flag)||/adjustment|correction/.test(t)) return 'Adjustments';
+      return 'Unclassified';
+    };
+    const sumClass=(list,klass)=>list.filter(r=>classify(r)===klass).reduce((a,r)=>a+amountOf(r),0);
     const render=()=>{
-      const prop=$('#txProp').value,type=$('#txType').value,q=$('#txSearch').value.trim().toLowerCase();
+      const q=$('#txSearch').value.trim().toLowerCase();
       const filtered=rows.filter(r=>{
-        const propertyMatch=prop==='ALL'||String(r.property_id)===prop;
-        const typeMatch=type==='ALL'||r.transaction_type===type;
-        const haystack=[r.guest_name,r.reservation_no,r.reservation_source,r.house_account_name,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code,r.transaction_source].join(' ').toLowerCase();
-        return propertyMatch&&typeMatch&&(!q||haystack.includes(q));
+        const haystack=[propName(r.property_id),r.guest_name,r.reservation_no,r.reservation_source,r.house_account_name,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code,r.transaction_source,r.transaction_type].join(' ').toLowerCase();
+        return !q||haystack.includes(q);
       });
-      const voided=filtered.filter(r=>/^(yes|true|1)$/i.test(String(r.void_flag||''))).length;
-      const refunded=filtered.filter(r=>/^(yes|true|1)$/i.test(String(r.refund_flag||''))).length;
-      const adjusted=filtered.filter(r=>/^(yes|true|1)$/i.test(String(r.adjustment_flag||''))).length;
-      const amount=filtered.reduce((sum,r)=>sum+(Number(r.transaction_amount)||0),0);
-      const money=n=>n==null||!Number.isFinite(Number(n))?'—':'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-      const propName=id=>S.props.find(p=>String(p.id)===String(id))?.name||String(id||'—');
-      const flag=(v,label)=>/^(yes|true|1)$/i.test(String(v||''))?label:'';
+      const room=sumClass(filtered,'Room Revenue'), ancillary=sumClass(filtered,'Ancillary Revenue');
+      const taxes=sumClass(filtered,'Taxes'), fees=sumClass(filtered,'Fees'), payments=sumClass(filtered,'Payments');
+      const refunds=sumClass(filtered,'Refunds'), adjustments=sumClass(filtered,'Adjustments');
+      const unclassified=filtered.filter(r=>classify(r)==='Unclassified').length;
+      const voided=filtered.filter(r=>isFlag(r.void_flag)).length;
+      const netRevenue=room+ancillary-refunds-adjustments;
+      const propertyTotals=new Map();
+      filtered.forEach(r=>{
+        const key=String(r.property_id);
+        if(!propertyTotals.has(key))propertyTotals.set(key,{room:0,ancillary:0,taxes:0,fees:0,refunds:0,adjustments:0});
+        const x=propertyTotals.get(key),c=classify(r),a=amountOf(r);
+        if(c==='Room Revenue')x.room+=a;
+        if(c==='Ancillary Revenue')x.ancillary+=a;
+        if(c==='Taxes')x.taxes+=a;
+        if(c==='Fees')x.fees+=a;
+        if(c==='Refunds')x.refunds+=a;
+        if(c==='Adjustments')x.adjustments+=a;
+      });
+      const flag=(v,label)=>isFlag(v)?label:'';
       box.innerHTML=`
         <div class="cards">
-          <div class="c"><small>RECORDS MATCHING FILTERS</small><b>${fmt(filtered.length)}</b><i>From latest ${fmt(rows.length)} loaded records</i></div>
-          <div class="c"><small>SIGNED TRANSACTION AMOUNT (NOT REVENUE)</small><b>${money(amount)}</b><i>Not a revenue total; includes different transaction types</i></div>
-          <div class="c"><small>VOID / REFUND / ADJUSTMENT FLAGS</small><b>${fmt(voided)} / ${fmt(refunded)} / ${fmt(adjusted)}</b><i>Cloudbeds flags; not accounting conclusions</i></div>
+          <div class="c"><small>NET REVENUE · PROVISIONAL</small><b>${money(netRevenue)}</b><i>Room + ancillary less flagged refunds and adjustments</i></div>
+          <div class="c"><small>ROOM REVENUE</small><b>${money(room)}</b><i>Detected room-revenue transactions</i></div>
+          <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Detected add-on, item and service transactions</i></div>
+          <div class="c"><small>TAXES</small><b>${money(taxes)}</b><i>Shown separately from earned revenue</i></div>
+          <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Based on Cloudbeds fee fields</i></div>
+          <div class="c"><small>PAYMENTS / COLLECTIONS</small><b>${money(payments)}</b><i>Not added to revenue</i></div>
+          <div class="c"><small>REFUNDS / ADJUSTMENTS</small><b>${money(refunds+adjustments)}</b><i>Refunds ${money(refunds)} · Adjustments ${money(adjustments)}</i></div>
         </div>
-        <section class="p">
-          <h3>Cloudbeds Transaction Details</h3>
-          <p class="note">Read-only source records. Transaction date, business date and service date are kept distinct. Revenue, taxes, fees, payments, refunds and adjustments must be classified separately before management totals are published.</p>
-          <div style="overflow:auto">
-            <table>
-              <thead><tr><th>Property</th><th>Transaction date<br>Business date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description / Code</th><th>Amount</th><th>Flags</th></tr></thead>
-              <tbody>${filtered.slice(0,300).map(r=>`<tr>
-                <td>${escapeHtml(propName(r.property_id))}</td>
-                <td>${escapeHtml(r.transaction_date||'—')}<br><small>${escapeHtml(r.business_date||'—')}</small></td>
-                <td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td>
-                <td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td>
-                <td>${escapeHtml(r.transaction_type||'—')}</td>
-                <td>${escapeHtml(r.room_revenue_type||r.tax_type||r.fee_type||r.pos_charge_category||r.item_service_category||'—')}</td>
-                <td>${escapeHtml(r.transaction_description||r.cloudbeds_transaction_code_description||r.cloudbeds_transaction_code||'—')}</td>
-                <td>${money(r.transaction_amount)}</td>
-                <td>${[flag(r.void_flag,'Void'),flag(r.refund_flag,'Refund'),flag(r.adjustment_flag,'Adjustment')].filter(Boolean).join(' · ')||'—'}</td>
-              </tr>`).join('')}</tbody>
-            </table>
-          </div>
-          <p class="note">Showing up to 300 matching rows from the latest 1,000 records returned. Revenue totals and category breakdowns are intentionally not calculated yet. They will be enabled after Cloudbeds transaction types, room revenue types, ancillary categories, taxes and fees are validated across all properties.</p>
-        </section>`;
+        <section class="p"><h3>Revenue by Property</h3><div style="overflow:auto"><table>
+          <thead><tr><th>Property</th><th>Room Revenue</th><th>Ancillary Revenue</th><th>Taxes</th><th>Fees</th><th>Refunds</th><th>Adjustments</th><th>Net Revenue*</th></tr></thead>
+          <tbody>${[...propertyTotals.entries()].map(([id,x])=>`<tr><td>${escapeHtml(propName(id))}</td><td>${money(x.room)}</td><td>${money(x.ancillary)}</td><td>${money(x.taxes)}</td><td>${money(x.fees)}</td><td>${money(x.refunds)}</td><td>${money(x.adjustments)}</td><td><b>${money(x.room+x.ancillary-x.refunds-x.adjustments)}</b></td></tr>`).join('')}</tbody>
+        </table></div><p class="note">*Provisional calculation based on detected Cloudbeds fields and signed transaction amounts. Validate classification and sign conventions before using as official management net revenue.</p></section>
+        <section class="p"><h3>Transaction Monitoring</h3><div class="cards">
+          <div class="c"><small>TRANSACTIONS LOADED</small><b>${fmt(filtered.length)}</b><i>Latest ${fmt(rows.length)} records returned</i></div>
+          <div class="c"><small>UNCLASSIFIED TRANSACTIONS</small><b>${fmt(unclassified)}</b><i>Require category mapping review</i></div>
+          <div class="c"><small>VOID FLAGS</small><b>${fmt(voided)}</b><i>Source flags only; not accounting conclusions</i></div>
+        </div></section>
+        <section class="p"><h3>Cloudbeds Transaction Details</h3><p class="note">Read-only source records. Transaction date, business date and service date are kept distinct. Search above to find a guest, property, reservation or transaction.</p>
+          <div style="overflow:auto"><table><thead><tr><th>Property</th><th>Transaction date<br>Business date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description / Code</th><th>Amount</th><th>Flags</th></tr></thead>
+          <tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(r.transaction_date||'—')}<br><small>${escapeHtml(r.business_date||'—')}</small></td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(r.room_revenue_type||r.tax_type||r.fee_type||r.pos_charge_category||r.item_service_category||classify(r))}</td><td>${escapeHtml(r.transaction_description||r.cloudbeds_transaction_code_description||r.cloudbeds_transaction_code||'—')}</td><td>${money(r.transaction_amount)}</td><td>${[flag(r.void_flag,'Void'),flag(r.refund_flag,'Refund'),flag(r.adjustment_flag,'Adjustment')].filter(Boolean).join(' · ')||'—'}</td></tr>`).join('')}</tbody></table></div>
+          <p class="note">Showing up to 300 matching rows from the latest 1,000 records returned. KPI totals use provisional classification rules and are not yet certified management figures.</p></section>`;
     };
-    ['txProp','txType','txSearch'].forEach(id=>$('#'+id).addEventListener(id==='txSearch'?'input':'change',render));
+    $('#txSearch').addEventListener('input',render);
     render();
   };
   $('#txRefresh').onclick=loadTransactions;
