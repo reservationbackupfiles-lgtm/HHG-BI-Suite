@@ -270,7 +270,69 @@
   }
 
   
+
+  const textValue = v => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    return !s || s === '-' ? null : s;
+  };
+  const flagValue = v => /^(yes|true|1)$/i.test(String(v ?? '').trim());
+  const moneyValue = v => {
+    if (v == null || v === '' || v === '-') return 0;
+    const n = Number(String(v).replace(/[₱,$\s]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  function transactionHeaderIndex(rows) {
+    return (rows || []).findIndex(row => Array.isArray(row) &&
+      ['propertyname','transactiontype','transactionamount','cloudbedstransactioncode'].every(k => row.map(norm).includes(k)));
+  }
+  function parseTransactions(rows, propertyId, sourceFile) {
+    const hi = transactionHeaderIndex(rows);
+    if (hi < 0) fail('the Expanded Transaction Report header (Property Name / Transaction Type / Transaction Amount / Cloudbeds Transaction Code)');
+    const headers = rows[hi].map(norm);
+    const get = (row, key) => { const i=headers.indexOf(norm(key)); return i < 0 ? null : row[i]; };
+    const out=[];
+    for (let i=hi+1;i<rows.length;i++) {
+      const row=rows[i]; if(!Array.isArray(row)) continue;
+      const transactionCode=textValue(get(row,'Cloudbeds Transaction Code'));
+      const transactionType=textValue(get(row,'Transaction Type'));
+      const transactionDate=textValue(get(row,'Transaction Date Time - Property'));
+      const transactionDescription=textValue(get(row,'Transaction Description'));
+      // Ignore completely blank/footer rows; preserve zero-value and flagged transactions.
+      if(!transactionCode && !transactionType && !transactionDate && !transactionDescription) continue;
+      const tx={
+        property_id:propertyId, source_file:sourceFile, source_row_number:i+1,
+        property_name:textValue(get(row,'Property Name')), transaction_user:textValue(get(row,'User')),
+        guest_name:textValue(get(row,'Primary Guest Full Name')), reservation_no:textValue(get(row,'Reservation Number')),
+        reservation_source:textValue(get(row,'Reservation Source')), house_account_name:textValue(get(row,'House Account Name')),
+        group_profile_name:textValue(get(row,'Group Profile Name')), reservation_status:textValue(get(row,'Reservation Status')),
+        check_in_date:textValue(get(row,'Check-In Date')), check_out_date:textValue(get(row,'Check-Out Date')),
+        transaction_date:transactionDate, business_date:textValue(get(row,'Business Date')), service_date:textValue(get(row,'Service Date')),
+        room_number:textValue(get(row,'Room Number')), room_type:textValue(get(row,'Room Type')),
+        hotel_collect_booking_flag:textValue(get(row,'Hotel Collect Booking Flag')), card_type:textValue(get(row,'Card Type')),
+        card_last_4_digits:textValue(get(row,'Card Last 4 Digits')), transaction_type:transactionType,
+        void_flag:textValue(get(row,'Void Flag')), tax_type:textValue(get(row,'Tax Type')),
+        room_revenue_type:textValue(get(row,'Room Revenue Type')), refund_flag:textValue(get(row,'Refund Flag')),
+        pos_charge_description:textValue(get(row,'POS Charge Description')), pos_charge_category:textValue(get(row,'POS Charge Category')),
+        item_service_name:textValue(get(row,'Item and Service Name')), item_service_category:textValue(get(row,'Item and Service Category')),
+        fee_type:textValue(get(row,'Fee Type')), adjustment_flag:textValue(get(row,'Adjustment Flag')),
+        addon_charge_type:textValue(get(row,'Add-on Charge Type')), addon_item:textValue(get(row,'Add-on Item')),
+        quantity:moneyValue(get(row,'Quantity')), debits:moneyValue(get(row,'Debits')), credits:moneyValue(get(row,'Credits')),
+        transaction_amount:moneyValue(get(row,'Transaction Amount')), cloudbeds_transaction_code:transactionCode,
+        cloudbeds_transaction_code_description:textValue(get(row,'Cloudbeds Transaction Code Description')),
+        transaction_description:transactionDescription, transaction_notes:textValue(get(row,'Transaction Notes')),
+        transaction_source:textValue(get(row,'Transaction Source')), custom_general_ledger_code:textValue(get(row,'Custom General Ledger Code')),
+        custom_transaction_code:textValue(get(row,'Custom Transaction Code')),
+        raw_data:Object.fromEntries(rows[hi].map((h,j)=>[String(h||`column_${j}`).trim(),row[j]??null]))
+      };
+      out.push(tx);
+    }
+    if(!out.length) throw new Error('No transaction rows found below the Expanded Transaction Report header.');
+    return {rows:out,note:`${out.length} transaction rows; original Cloudbeds fields preserved`};
+  }
+
 function detect(rows) {
+  if (transactionHeaderIndex(rows) >= 0) return 'Transactions';
   if (cancellationHeaderIndex(rows) >= 0) return 'Cancellations';
   if (find(rows, n => n.includes('date') && n.some(k => /^adr\d{4}$/.test(k))) >= 0) return 'ADR';
   if (find(rows, n => n.includes('reservationstatus') && n.includes('checkindate')) >= 0) return 'Reservations';
@@ -292,6 +354,7 @@ function detect(rows) {
     parsePace,
     parseRes,
     parseCancellations,
+    parseTransactions,
     detect,
     generatedAt
   };
