@@ -517,15 +517,98 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 .rm-tx-counts b{color:#173f34;font-size:14px;margin-left:4px}
 .rm-tx-details{margin-top:8px}
 .rm-tx-details summary{cursor:pointer;color:#075b46;font-size:11px;font-weight:650}
-</style>
+
+/* HHG Accommodation BI — split-screen login */
+#login.login-shell{
+  min-height:100vh;width:100%;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);
+  place-items:stretch;padding:0;background:var(--hhg-ivory,#F7F5EF);overflow:hidden
+}
+.login-brand-panel{
+  position:relative;display:flex;flex-direction:column;justify-content:center;min-height:100vh;
+  padding:clamp(36px,6vw,88px);color:#fff;
+  background:radial-gradient(ellipse at 18% 12%,#0B6049 0%,#063D32 48%,#042C25 100%);
+}
+.login-brand-inner{width:100%;max-width:610px;margin:auto}
+.login-wordmark{font-size:clamp(25px,3vw,34px);font-weight:800;letter-spacing:.14em;color:#fff}
+.login-product{font-size:clamp(30px,4vw,48px);line-height:1.08;font-weight:800;letter-spacing:-.045em;color:#D6AD62;margin-top:7px}
+.login-subbrand{font-size:11px;letter-spacing:.22em;font-weight:800;color:#E8E0CE;margin-top:13px}
+.login-gold-rule{width:54px;height:3px;border-radius:4px;background:#D6AD62;margin:27px 0}
+.login-brand-panel h2{font-size:clamp(25px,3vw,36px);line-height:1.2;letter-spacing:-.035em;margin:0 0 13px;color:#fff}
+.login-description{max-width:480px;font-size:14px;line-height:1.7;color:#E2ECE6;margin:0}
+.login-features{display:grid;gap:15px;margin-top:32px}
+.login-features>div{display:flex;align-items:center;gap:12px;color:#F7F8F5;font-size:13px;font-weight:600}
+.login-features span{display:grid;place-items:center;width:21px;height:21px;border:1px solid rgba(214,173,98,.65);border-radius:50%;color:#D6AD62;font-size:12px;flex:0 0 21px}
+.login-brand-footer{position:absolute;bottom:27px;left:clamp(36px,6vw,88px);font-size:9px;letter-spacing:.16em;color:#B9CFC4}
+.login-form-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:42px clamp(28px,5vw,76px);background:#F7F5EF}
+.login-form-card{width:100%;max-width:390px;background:#fff;border:1px solid #E5E2D9;border-radius:16px;padding:clamp(25px,3vw,38px);box-shadow:0 12px 36px rgba(32,43,39,.06)}
+.login-form-heading{font-size:27px;font-weight:800;letter-spacing:-.04em;color:#063D32}
+.login-form-intro{margin:5px 0 23px;color:#68756F;font-size:12.5px}
+.login-form-card label{font-size:11px;color:#44534B;margin:15px 0 6px}
+.login-form-card input{height:43px;padding:10px 12px;border:1px solid #E0E4DE;border-radius:8px;font-size:13px}
+.login-form-card input:focus{border-color:#075B46;outline:3px solid rgba(7,91,70,.1)}
+.login-form-card .login-links{margin-top:10px;font-size:11.5px}
+.login-form-card .login-links a{color:#075B46;font-weight:700}
+.login-form-card #go{margin-top:18px;height:44px;background:#075B46;border-radius:8px;font-size:13px}
+.login-form-card #go:hover{background:#063D32}
+.login-form-card .err{margin-top:8px}
+.login-clock{font-size:10.5px;color:#8A948E;text-align:center;margin:12px 0 0}
+.login-copyright{margin-top:20px;text-align:center;color:#7A857E;font-size:10px}
+.login-copyright span{padding:0 5px;color:#D6AD62}
+@media(max-width:850px){
+ #login.login-shell{grid-template-columns:minmax(0,1fr) minmax(330px,.9fr)}
+ .login-brand-panel{padding:35px}
+ .login-brand-footer{left:35px}
+ .login-features{gap:11px}
+}
+@media(max-width:680px){
+ #login.login-shell{grid-template-columns:1fr;overflow:auto}
+ .login-brand-panel{min-height:auto;padding:30px 25px 27px}
+ .login-product{font-size:32px}
+ .login-brand-panel h2{font-size:25px}
+ .login-description{font-size:12px}
+ .login-features{grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+ .login-features>div{font-size:10px;align-items:flex-start}
+ .login-brand-footer{display:none}
+ .login-form-panel{padding:25px 18px 30px}
+ .login-form-card{max-width:440px;padding:25px}
+}
+\n</style>
 </head>
 <body>
-<div id="login"><div class="box"><h1>HHG BI SUITE</h1><p>Sign in to view reports.</p>
-<label for="em">Email</label><input id="em" type="email" autocomplete="off" placeholder="Enter your email">
-<label for="pw">Password</label><input id="pw" type="password" autocomplete="new-password" placeholder="Enter your password">
-<div class="login-links"><a id="forgotLink">Forgot password?</a></div>
-<button class="btn" id="go" style="width:100%">Sign in</button><div class="err" id="lerr"></div>
-<p style="font-size:12.5px" id="lclock"></p></div></div>
+<div id="login" class="login-shell">
+  <section class="login-brand-panel" aria-label="About HHG Accommodation BI">
+    <div class="login-brand-inner">
+      <div class="login-wordmark">HHG</div>
+      <div class="login-product">Accommodation BI</div>
+      <div class="login-subbrand">BUSINESS INTELLIGENCE</div>
+      <div class="login-gold-rule"></div>
+      <h2>Smarter Insights.<br>Better Decisions.</h2>
+      <p class="login-description">A centralized platform for monitoring accommodation performance across H Hospitality Group.</p>
+      <div class="login-features">
+        <div><span>✓</span>Room Revenue &amp; Booking Performance</div>
+        <div><span>✓</span>Booking Channel Performance</div>
+        <div><span>✓</span>Property &amp; Reservation Monitoring</div>
+        <div><span>✓</span>Historical Trends &amp; Business Insights</div>
+      </div>
+    </div>
+    <div class="login-brand-footer">H HOSPITALITY GROUP CORPORATION</div>
+  </section>
+  <section class="login-form-panel" aria-label="Sign in">
+    <div class="login-form-card">
+      <div class="login-form-heading">Welcome Back</div>
+      <p class="login-form-intro">Sign in to your authorized HHG account.</p>
+      <label for="em">Email Address</label>
+      <input id="em" type="email" autocomplete="off" placeholder="Enter your email">
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="new-password" placeholder="Enter your password">
+      <div class="login-links"><a id="forgotLink">Forgot password?</a></div>
+      <button class="btn" id="go" style="width:100%">Sign in</button>
+      <div class="err" id="lerr"></div>
+      <p class="login-clock" id="lclock"></p>
+    </div>
+    <div class="login-copyright">HHG Accommodation BI <span>·</span> Internal Management System</div>
+  </section>
+</div>
 
 <div id="app" hidden>
 <aside>
