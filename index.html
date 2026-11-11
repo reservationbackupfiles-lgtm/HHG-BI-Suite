@@ -518,6 +518,52 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 .rm-tx-details{margin-top:8px}
 .rm-tx-details summary{cursor:pointer;color:#075b46;font-size:11px;font-weight:650}
 
+
+/* Revenue Monitoring — executive layout */
+.rm-hero{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:24px;align-items:center;background:linear-gradient(115deg,#fff 0%,#f5f7f2 62%,#edf3ee 100%);border:1px solid #dfe8df;padding:24px}
+.rm-hero-note{background:#fff;border:1px solid #dfe8df;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.rm-hero-note strong,.rm-overline{font-size:9px;letter-spacing:.13em;color:#98713a;font-weight:800}
+.rm-hero-note span{font-size:20px;font-weight:800;color:#075b46}
+.rm-hero-note small{font-size:10px;line-height:1.5;color:#68756f}
+.rm-toolbar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 15px;margin:14px 0}
+.rm-toolbar .rm-filters{margin:0;grid-template-columns:minmax(140px,1fr) minmax(140px,1fr) minmax(180px,1.2fr) auto}
+.rm-filter-note{font-size:10px;color:#78847e;margin-top:8px}
+.rm-section-head,.rm-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.rm-section-head h3,.rm-panel-title h3{font-size:16px;color:#174c3d;margin:3px 0 4px;font-weight:800}
+.rm-section-head p,.rm-panel-title p{font-size:11px;color:#75817b;margin:0}
+.rm-period{font-size:10px;color:#5f6d66;background:#f5f6f2;border:1px solid #e5e9e2;border-radius:20px;padding:6px 10px;white-space:nowrap}
+.rm-kpis{display:grid;gap:10px;margin:10px 0}
+.rm-kpis-primary{grid-template-columns:1.45fr repeat(3,minmax(0,1fr))}
+.rm-kpis-secondary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rm-kpis .c{padding:15px;min-width:0}
+.rm-kpis .c small{display:block;font-size:9px;font-weight:800;letter-spacing:.07em}
+.rm-kpis .c b{display:block;font-size:21px;line-height:1.2;margin:7px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-kpis .c i{display:block;font-size:10px;line-height:1.35;font-style:normal;color:#78847e}
+.rm-kpis .rm-kpi-main{background:#f0f6f1;border-color:#d6e5d9}
+.rm-kpis .rm-kpi-main b{font-size:27px;color:#075b46}
+.rm-section-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
+.rm-section-grid .p{min-width:0;margin-bottom:14px}
+.rm-bars,.rm-month-grid{display:flex;flex-direction:column;gap:12px}
+.rm-bar-row>div:first-child,.rm-month>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#56665e;margin-bottom:5px}
+.rm-bar-row b,.rm-month b{font-size:10px;color:#174c3d;white-space:nowrap}
+.rm-bar-track{height:7px;background:#edf1eb;border-radius:99px;overflow:hidden}
+.rm-bar-track i{height:100%;display:block;background:linear-gradient(90deg,#075b46,#83a98e);border-radius:99px}
+.rm-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 18px}
+.rm-other-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rm-other-grid>div,.rm-quality-grid>div{background:#fafbf8;border:1px solid #e9ede7;border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:5px}
+.rm-other-grid span,.rm-quality-grid span{font-size:10px;color:#6c7972}
+.rm-other-grid b{font-size:15px;color:#174c3d}
+.rm-quality-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.rm-quality-grid b{font-size:21px;color:#174c3d}
+.rm-review-tag{font-size:9px;font-weight:800;color:#85632c;background:#fbf5e8;border:1px solid #eee0c2;border-radius:20px;padding:6px 9px;white-space:nowrap}
+.rm-warning{margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#fff8e9;color:#765b2b;font-size:10px;line-height:1.5}
+.rm-tx-details summary{padding:10px 0}
+.rm-tx-details .rm-table-wrap{margin-top:8px}
+.rm-tx-details table{min-width:1050px}
+@media(max-width:1100px){.rm-kpis-primary{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-kpis-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.rm-hero{grid-template-columns:1fr}.rm-hero-note{max-width:none}.rm-section-grid{grid-template-columns:1fr}.rm-month-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.rm-toolbar .rm-filters{grid-template-columns:1fr 1fr}.rm-toolbar .rm-filters button{grid-column:1/-1}.rm-other-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-section-head{flex-direction:column}.rm-month-grid{grid-template-columns:1fr}.rm-kpis .c b{font-size:18px}.rm-kpis .rm-kpi-main b{font-size:23px}}
+
 /* HHG Accommodation BI — split-screen login */
 #login.login-shell{
   min-height:100vh;width:100%;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);
@@ -1070,130 +1116,131 @@ function recon(){
   const props=(S.props||[]);
   const propOptions=props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('');
   $('#view').innerHTML=`
-    <div class="recon-intro p">
-      <div class="recon-eyebrow">HHG MANAGEMENT REPORTING</div>
-      <h2>Revenue at a glance, across all HHG properties.</h2>
-      <p>Monitor room revenue, ancillary sales, taxes, fees, collections and adjustments from Cloudbeds. Use the filters to review historical performance from 2025 onwards.</p>
-      <div class="recon-status"><span class="recon-status-dot"></span>Read-only management monitoring · Admin access only</div>
+    <div class="recon-intro p rm-hero">
+      <div><div class="recon-eyebrow">HHG MANAGEMENT REPORTING · ACTUAL PERFORMANCE</div>
+      <h2>Accommodation revenue monitoring, grounded in posted room charges.</h2>
+      <p>Monitor room charges by service date, property and booking channel. Taxes, fees, ancillary sales and collections are reported separately and are not added to room revenue.</p>
+      <div class="recon-status"><span class="recon-status-dot"></span>Admin access · Read-only transaction monitoring</div></div>
+      <div class="rm-hero-note"><strong>REPORTING BASIS</strong><span>Service Date</span><small>Room charges are attributed to the date of the accommodation service, not the reservation booking date or payment date.</small></div>
     </div>
-    <div class="rm-filters">
-      <div><label for="rmFrom">From</label><input id="rmFrom" type="date" value="2025-01-01" min="2025-01-01"></div>
-      <div><label for="rmTo">To</label><input id="rmTo" type="date" value="2026-11-09"></div>
-      <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
-      <button class="btn" id="txRefresh" type="button" style="margin:0;height:36px">↻ Apply Filters</button>
+    <div class="rm-toolbar">
+      <div class="rm-filters">
+        <div><label for="rmFrom">Service date from</label><input id="rmFrom" type="date" value="2025-01-01" min="2025-01-01"></div>
+        <div><label for="rmTo">Service date to</label><input id="rmTo" type="date" value="2026-11-11"></div>
+        <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
+        <button class="btn" id="txRefresh" type="button" style="margin:0;height:38px">Apply Filters</button>
+      </div>
+      <div class="rm-filter-note">Filters apply to the selected service / transaction date basis. Room revenue uses Service Date.</div>
     </div>
-<nav class="rm-tabs" aria-label="Revenue monitoring sections">
-      <a href="#rmOverview">Overview</a><a href="#rmBreakdown">Revenue by Property</a><a href="#rmBreakdown">OTA Revenue</a><a href="#rmTaxes">Taxes &amp; Fees</a><a href="#rmPayments">Payments &amp; Collections</a><a href="#rmRefunds">Refunds &amp; Adjustments</a><a href="#rmTransactions">Transaction Details</a><a href="#rmAlerts">Monitoring Alerts</a>
-    </nav>
-    <div id="txContent"><p class="mu">Loading revenue summary…</p></div>
-  `;
+    <div id="txContent"><p class="mu">Loading revenue summary…</p></div>`;
   const box=$('#txContent');
   const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const propName=id=>props.find(p=>String(p.id)===String(id))?.name||String(id||'—');
   const isFlag=v=>/^(yes|true|1)$/i.test(String(v||'').trim());
-  const excelDate=n=>{
-    const d=new Date(Date.UTC(1899,11,30)+Number(n)*86400000);
-    return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):'';
-  };
+  const excelDate=n=>{const d=new Date(Date.UTC(1899,11,30)+Number(n)*86400000);return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):'';};
   const dateKey=v=>{
     if(v===null||v===undefined||String(v).trim()===''||String(v).trim()==='-')return '';
     const raw=String(v).trim();
     if(/^\d{4}-\d{2}-\d{2}/.test(raw))return raw.slice(0,10);
     if(/^\d{5}(\.\d+)?$/.test(raw))return excelDate(Number(raw));
-    const d=new Date(raw);
-    return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):'';
+    const d=new Date(raw);return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):'';
   };
-  const textOf=r=>[r.transaction_type,r.room_revenue_type,r.tax_type,r.fee_type,r.pos_charge_category,r.item_service_category,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code].filter(Boolean).join(' ').toLowerCase();
-  const amountOf=r=>Number(r.transaction_amount)||0;
+  const clean=v=>String(v??'').trim().toLowerCase();
+  const hasValue=v=>v!==null&&v!==undefined&&String(v).trim()!==''&&String(v).trim()!=='-';
+  const textOf=r=>[r.transaction_type,r.room_revenue_type,r.tax_type,r.fee_type,r.pos_charge_category,r.item_service_category,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code].filter(hasValue).join(' ').toLowerCase();
+  const signedAmount=r=>{
+    const d=Number(r.debits),c=Number(r.credits);
+    if(Number.isFinite(d)&&Number.isFinite(c)&&(hasValue(r.debits)||hasValue(r.credits)))return d-c;
+    return Number(r.transaction_amount)||0;
+  };
   const classify=r=>{
-    const t=textOf(r),type=String(r.transaction_type||'').toLowerCase();
+    const t=textOf(r),type=clean(r.transaction_type),rr=clean(r.room_revenue_type);
     if(isFlag(r.void_flag))return 'Void';
     if(isFlag(r.refund_flag)||/refund/.test(t))return 'Refunds';
-    if(/payment|deposit|collection|paid/.test(type))return 'Payments';
-    if(r.tax_type||/tax|vat/.test(type))return 'Taxes';
-    if(r.fee_type||/fee|service charge/.test(type))return 'Fees';
-    if(r.room_revenue_type||/room charge|accommodation|lodging/.test(t))return 'Room Revenue';
-    if(r.pos_charge_category||r.item_service_category||/add.?on|item|service|pos charge|food|beverage|transport|tour|laundry|massage|rental/.test(t))return 'Ancillary Revenue';
-    if(isFlag(r.adjustment_flag)||/adjustment|correction/.test(t))return 'Adjustments';
+    if(type==='room rate'||type==='room revenue'||rr==='room rate'||rr==='room revenue - manual'||rr==='room revenue')return 'Room Revenue';
+    if(type==='payment'||/payment|deposit|collection|paid/.test(type))return 'Payments';
+    if(type==='tax'||hasValue(r.tax_type)||/\btax\b|vat/.test(type))return 'Taxes';
+    if(type==='fee'||hasValue(r.fee_type)||/fee|service charge/.test(type))return 'Fees';
+    if(type==='adjustment'||isFlag(r.adjustment_flag)||/adjustment|correction/.test(t))return 'Adjustments';
+    if(type==='items & services'||type==='add-on'||r.pos_charge_category||r.item_service_category||/add.?on|item|service|pos charge|food|beverage|transport|tour|laundry|massage|rental/.test(t))return 'Ancillary Revenue';
     return 'Unclassified';
   };
-  const sumClass=(list,klass)=>list.filter(r=>classify(r)===klass).reduce((a,r)=>a+amountOf(r),0);
   let allRows=[];
   const loadTransactions=async()=>{
     box.innerHTML='<p class="mu">Loading Cloudbeds transaction history…</p>';
-    const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source';
+    const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
     let collected=[],from=0,batch=1000;
     while(true){
       const {data,error}=await sb.from('transaction_details').select(fields).order('transaction_date',{ascending:false}).range(from,from+batch-1);
-      if(error){
-        box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table and Admin access.</p>`;
-        return;
-      }
-      const page=data||[];
-      collected=collected.concat(page);
-      if(page.length<batch)break;
-      from+=batch;
-      if(from>=100000)break;
+      if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table and Admin access.</p>`;return;}
+      const page=data||[];collected=collected.concat(page);if(page.length<batch)break;from+=batch;if(from>=100000)break;
     }
-    allRows=collected;
-    render();
+    allRows=collected;render();
   };
   const render=()=>{
     const from=$('#rmFrom').value||'2025-01-01',to=$('#rmTo').value||'9999-12-31',property=$('#rmProperty').value;
     if(from>to){box.innerHTML='<p class="err">The start date must be earlier than or equal to the end date.</p>';return;}
-    const filtered=allRows.filter(r=>{
-      if(property&&String(r.property_id)!==String(property))return false;
-      const d=dateKey(r.business_date)||dateKey(r.transaction_date);
-      return d && d>=from && d<=to;
+    const scoped=allRows.filter(r=>!property||String(r.property_id)===String(property));
+    const filtered=scoped.filter(r=>{
+      const c=classify(r),d=c==='Room Revenue'?dateKey(r.service_date):(dateKey(r.business_date)||dateKey(r.transaction_date));
+      return d&&d>=from&&d<=to;
     });
-    const room=sumClass(filtered,'Room Revenue'),ancillary=sumClass(filtered,'Ancillary Revenue');
-    const taxes=sumClass(filtered,'Taxes'),fees=sumClass(filtered,'Fees'),payments=sumClass(filtered,'Payments');
-    const refunds=sumClass(filtered,'Refunds'),adjustments=sumClass(filtered,'Adjustments');
-    const unclassified=filtered.filter(r=>classify(r)==='Unclassified').length;
-    const netRevenue=room+ancillary-refunds-adjustments;
-    const propertyTotals=new Map(props.map(p=>[String(p.id),{name:p.name,room:0,ancillary:0,taxes:0,fees:0,refunds:0,adjustments:0}]));
-    filtered.forEach(r=>{
-      const key=String(r.property_id);
-      if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,refunds:0,adjustments:0});
-      const x=propertyTotals.get(key),c=classify(r),a=amountOf(r);
-      if(c==='Room Revenue')x.room+=a;
-      if(c==='Ancillary Revenue')x.ancillary+=a;
-      if(c==='Taxes')x.taxes+=a;
-      if(c==='Fees')x.fees+=a;
-      if(c==='Refunds')x.refunds+=a;
-      if(c==='Adjustments')x.adjustments+=a;
-    });
+    const roomRows=filtered.filter(r=>classify(r)==='Room Revenue'&&!isFlag(r.void_flag));
+    const room=sum=>sum.reduce((a,r)=>a+signedAmount(r),0);
+    const roomRevenue=room(roomRows);
+    const ancillary=filtered.filter(r=>classify(r)==='Ancillary Revenue').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const taxes=filtered.filter(r=>classify(r)==='Taxes').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const fees=filtered.filter(r=>classify(r)==='Fees').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const payments=filtered.filter(r=>classify(r)==='Payments').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const refunds=filtered.filter(r=>classify(r)==='Refunds').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const adjustments=filtered.filter(r=>classify(r)==='Adjustments').reduce((a,r)=>a+signedAmount(r),0);
+    const unclassified=filtered.filter(r=>classify(r)==='Unclassified');
+    const missingServiceDate=scoped.filter(r=>classify(r)==='Room Revenue'&&!dateKey(r.service_date)).length;
+    const manualRoom=roomRows.filter(r=>clean(r.room_revenue_type).includes('manual')||clean(r.transaction_type)==='room revenue').length;
+    const propertyTotals=new Map(props.map(p=>[String(p.id),{name:p.name,room:0,ancillary:0,taxes:0,fees:0,roomCount:0}]));
+    roomRows.forEach(r=>{const key=String(r.property_id);if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,roomCount:0});const x=propertyTotals.get(key);x.room+=signedAmount(r);x.roomCount++;});
+    filtered.forEach(r=>{const key=String(r.property_id);if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,roomCount:0});const x=propertyTotals.get(key),c=classify(r),a=Math.abs(signedAmount(r));if(c==='Ancillary Revenue')x.ancillary+=a;if(c==='Taxes')x.taxes+=a;if(c==='Fees')x.fees+=a;});
+    const bySource=new Map();roomRows.forEach(r=>{const s=hasValue(r.reservation_source)?String(r.reservation_source):'Unassigned';bySource.set(s,(bySource.get(s)||0)+signedAmount(r));});
+    const sourceRows=[...bySource.entries()].sort((a,b)=>b[1]-a[1]);
+    const maxSource=Math.max(1,...sourceRows.map(x=>Math.abs(x[1])));
+    const byMonth=new Map();roomRows.forEach(r=>{const d=dateKey(r.service_date);if(d){const m=d.slice(0,7);byMonth.set(m,(byMonth.get(m)||0)+signedAmount(r));}});
+    const monthRows=[...byMonth.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+    const maxMonth=Math.max(1,...monthRows.map(x=>Math.abs(x[1])));
+    const txDate=r=>dateKey(r.service_date)||dateKey(r.business_date)||dateKey(r.transaction_date)||'—';
     box.innerHTML=`
-      <div class="rm-kpis" id="rmOverview">
-        <div class="c"><small>NET REVENUE*</small><b>${money(netRevenue)}</b><i>Room + ancillary less refunds/adjustments</i></div>
-        <div class="c"><small>ROOM REVENUE</small><b>${money(room)}</b><i>Classified room charges</i></div>
-        <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Items, add-ons and services</i></div>
-        <div class="c" id="rmTaxes"><small>TAXES</small><b>${money(taxes)}</b><i>Shown separately</i></div>
-        <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Shown separately</i></div>
-        <div class="c" id="rmPayments"><small>PAYMENTS</small><b>${money(payments)}</b><i>Collections, not revenue</i></div>
-        <div class="c" id="rmRefunds"><small>REFUNDS / ADJUSTMENTS</small><b>${money(refunds+adjustments)}</b><i>Refunds ${money(refunds)} · Adj. ${money(adjustments)}</i></div>
+      <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Based on posted room charges with a valid Service Date.</p></div><span class="rm-period">${escapeHtml(from)} — ${escapeHtml(to)}</span></div>
+      <div class="rm-kpis rm-kpis-primary" id="rmOverview">
+        <div class="c rm-kpi-main"><small>ROOM CHARGES</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
+        <div class="c"><small>ANCILLARY SALES</small><b>${money(ancillary)}</b><i>Items, add-ons and services</i></div>
+        <div class="c"><small>TAXES</small><b>${money(taxes)}</b><i>Separate from room revenue</i></div>
+        <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Separate from room revenue</i></div>
       </div>
-      <section class="p" id="rmBreakdown">
-        <h3>Revenue by Property</h3>
-        <div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Room Revenue</th><th>Ancillary</th><th>Taxes</th><th>Fees</th><th>Refunds</th><th>Adjustments</th><th>Net Revenue*</th></tr></thead>
-        <tbody>${[...propertyTotals.entries()].map(([id,x])=>`<tr><td>${escapeHtml(x.name)}</td><td>${money(x.room)}</td><td>${money(x.ancillary)}</td><td>${money(x.taxes)}</td><td>${money(x.fees)}</td><td>${money(x.refunds)}</td><td>${money(x.adjustments)}</td><td><b>${money(x.room+x.ancillary-x.refunds-x.adjustments)}</b></td></tr>`).join('')}
-        <tr><th>Total</th><th>${money(room)}</th><th>${money(ancillary)}</th><th>${money(taxes)}</th><th>${money(fees)}</th><th>${money(refunds)}</th><th>${money(adjustments)}</th><th>${money(netRevenue)}</th></tr></tbody></table></div>
-        <p class="note">*Provisional estimate based on current transaction classification and signed amounts. Validate classification and refund/adjustment sign conventions before using as official management net revenue.</p>
+      <div class="rm-kpis rm-kpis-secondary">
+        <div class="c"><small>PAYMENTS / COLLECTIONS</small><b>${money(payments)}</b><i>Cash movement · not revenue</i></div>
+        <div class="c"><small>REFUNDS</small><b>${money(refunds)}</b><i>Shown separately</i></div>
+        <div class="c"><small>ADJUSTMENTS</small><b>${money(adjustments)}</b><i>Signed debit less credit</i></div>
+        <div class="c"><small>UNCLASSIFIED RECORDS</small><b>${fmt(unclassified.length)}</b><i>Require mapping review</i></div>
+      </div>
+      <div class="rm-section-grid" id="rmBreakdown">
+        <section class="p"><div class="rm-panel-title"><div><h3>Room revenue by property</h3><p>Posted room charges attributed to service date.</p></div></div>
+          <div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Room charge records</th><th>Room charges</th></tr></thead><tbody>${[...propertyTotals.values()].sort((a,b)=>b.room-a.room).map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${fmt(x.roomCount)}</td><td><b>${money(x.room)}</b></td></tr>`).join('')}<tr class="tot"><td><b>Total</b></td><td><b>${fmt(roomRows.length)}</b></td><td><b>${money(roomRevenue)}</b></td></tr></tbody></table></div>
+        </section>
+        <section class="p" id="rmChannels"><div class="rm-panel-title"><div><h3>Room revenue by booking channel</h3><p>Based on reservation source attached to room-charge records.</p></div></div>
+          <div class="rm-bars">${sourceRows.map(([name,value])=>`<div class="rm-bar-row"><div><span>${escapeHtml(name)}</span><b>${money(value)}</b></div><div class="rm-bar-track"><i style="width:${Math.max(2,Math.abs(value)/maxSource*100)}%"></i></div></div>`).join('')||'<p class="rm-empty">No room revenue by channel for this period.</p>'}</div>
+        </section>
+      </div>
+      <section class="p" id="rmTrend"><div class="rm-panel-title"><div><h3>Room revenue trend</h3><p>Monthly room charges based on Service Date.</p></div></div><div class="rm-month-grid">${monthRows.map(([m,v])=>`<div class="rm-month"><div><span>${escapeHtml(m)}</span><b>${money(v)}</b></div><div class="rm-bar-track"><i style="width:${Math.max(2,Math.abs(v)/maxMonth*100)}%"></i></div></div>`).join('')||'<p class="rm-empty">No room-charge records found.</p>'}</div></section>
+      <section class="p" id="rmOther"><div class="rm-panel-title"><div><h3>Other financial activity</h3><p>Kept separate from actual room revenue to avoid mixing revenue, tax and cash collection.</p></div></div>
+        <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments / collections</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div></div>
       </section>
-      <section class="p" id="rmAlerts"><h3>Transaction Monitoring</h3><div class="cards">
-        <div class="c"><small>TRANSACTIONS IN PERIOD</small><b>${fmt(filtered.length)}</b><i>Filtered by business date, fallback transaction date</i></div>
-        <div class="c"><small>UNCLASSIFIED</small><b>${fmt(unclassified)}</b><i>Require mapping review</i></div>
-        <div class="c"><small>VOID FLAGS</small><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><i>Source flags only</i></div>
-      </div></section>
-      <section id="rmTransactions" class="p"><h3>Transaction Details</h3>
-        <div class="rm-tx-counts"><span>Transactions <b>${fmt(filtered.length)}</b></span><span>Unclassified <b>${fmt(unclassified)}</b></span><span>Void flags <b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b></span></div>
-        <details class="rm-tx-details"><summary>View transaction records (up to 300 rows)</summary>
-        <p class="note">Read-only source records. Date filters use Business Date where available, otherwise Transaction Date.</p>
-        <div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Transaction Date</th><th>Business Date</th><th>Guest / Reservation</th><th>Source</th><th>Type</th><th>Category</th><th>Description / Code</th><th>Amount</th></tr></thead>
-        <tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.transaction_date)||r.transaction_date||'—')}</td><td>${escapeHtml(dateKey(r.business_date)||r.business_date||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${escapeHtml(r.transaction_description||r.cloudbeds_transaction_code_description||r.cloudbeds_transaction_code||'—')}</td><td>${money(r.transaction_amount)}</td></tr>`).join('')||'<tr><td colspan="9" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div>
-        </details>
+      <section class="p" id="rmAlerts"><div class="rm-panel-title"><div><h3>Data quality &amp; monitoring</h3><p>Exceptions to review before treating this page as an official Accounting reconciliation.</p></div><span class="rm-review-tag">Validation required</span></div>
+        <div class="rm-quality-grid"><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected period</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected period</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected period</span></div></div>
+        ${unclassified.length?`<p class="rm-warning">Unclassified transaction types include: ${[...new Set(unclassified.map(r=>String(r.transaction_type||'Blank')))].slice(0,8).map(escapeHtml).join(', ')}. Review these mappings before final reporting.</p>`:''}
       </section>
-      <p class="note">Loaded ${fmt(allRows.length)} transaction records from the database. *Net Revenue is provisional pending validation of transaction classification and sign conventions.</p>`;
+      <section class="p" id="rmTransactions"><div class="rm-panel-title"><div><h3>Transaction details</h3><p>Source-level records for audit and investigation.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
+        <details class="rm-tx-details"><summary>View transaction records (up to 300 rows)</summary><div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Service / Activity date</th><th>Transaction date</th><th>Guest / Reservation</th><th>Channel</th><th>Type</th><th>Classification</th><th>Debits</th><th>Credits</th><th>Net amount</th></tr></thead><tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.service_date)||'—')}</td><td>${escapeHtml(dateKey(r.transaction_date)||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${money(r.debits)}</td><td>${money(r.credits)}</td><td>${money(signedAmount(r))}</td></tr>`).join('')||'<tr><td colspan="10" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div></details>
+      </section>
+      <p class="note">Loaded ${fmt(allRows.length)} transaction records. Room revenue includes Room Rate and Room Revenue classifications and uses Debits less Credits. Figures remain provisional until source completeness, manual entries, and Accounting treatment are validated. PCL Loyverse Room Charges are not automatically classified as room revenue.</p>`;
   };
   ['rmFrom','rmTo','rmProperty'].forEach(id=>$('#'+id).addEventListener('change',render));
   $('#txRefresh').onclick=loadTransactions;
