@@ -797,9 +797,9 @@ async function load(){
       fetchAll('cancellations').catch(e => { console.warn('Cancellation data unavailable for Daily Pickup.', e); return []; })
     ]);
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
-    // HHG approved room inventory (effective 05 Nov 2026). Use this as the
+    // HHG room inventory confirmed by user (11 Nov 2026). This is the
     // capacity source for occupancy, pace, and room-night calculations.
-    const roomCountByCode = {HHO:41,HSR:44,NBR:25,NBG:18,NBV:15,PCL:36,HZG:28,JBH:14,HVV:39};
+    const roomCountByCode = {HHO:41,HSR:45,NBR:26,NBG:18,NBV:15,PCL:36,HZG:28,JBH:14,HVV:39};
     S.props = rawProps.map(p=>{
       const code = codeByName[p.name]||String(p.id);
       const rooms = roomCountByCode[code] ?? (+p.rooms||0);
