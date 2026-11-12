@@ -6,7 +6,7 @@ create table if not exists properties (
 );
 insert into properties (code, name, total_rooms) values
   ('HHO','H Hotel',41), ('HSR','S Resort',45), ('PCL','Piece Lio',36),
-  ('NBR','Nacpan Beach Resort',26), ('NBG','Nacpan Beach Glamping',19),
+  ('NBR','Nacpan Beach Resort',26), ('NBG','Nacpan Beach Glamping',18),
   ('NBV','Nacpan Beach Villas',15), ('JBH','J Boutique Hotel',14),
   ('HZG','Z Garden Hotel',28),
   ('VV','Villa V',39)  -- TODO: set the real code and room count
