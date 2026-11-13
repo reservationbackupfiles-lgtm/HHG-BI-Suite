@@ -619,7 +619,21 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
  .login-form-panel{padding:25px 18px 30px}
  .login-form-card{max-width:440px;padding:25px}
 }
-\n</style>
+\n
+/* Revenue Monitoring date controls and dedicated transaction uploader */
+.rm-filters-advanced{grid-template-columns:minmax(150px,.9fr) repeat(3,minmax(190px,1.25fr)) auto;align-items:end}
+.rm-date-filter{min-width:0}
+.rm-date-filter>select{width:100%;height:36px;padding:7px 9px;font-size:12px}
+.rm-date-range{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px}
+.rm-date-range[hidden]{display:none}
+.rm-date-range input{width:100%;min-width:0;height:32px;padding:5px 6px;font-size:11px}
+.rm-upload-panel{margin:14px 0}
+.rm-upload-controls{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(240px,1.5fr) auto;gap:12px;align-items:end}
+.rm-upload-controls label{display:block;font-size:11px;margin:0 0 5px;color:#53645D}
+.rm-upload-controls select,.rm-upload-controls input{width:100%;min-height:38px;padding:7px 9px}
+@media(max-width:1100px){.rm-filters-advanced{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-upload-controls{grid-template-columns:1fr 1fr}.rm-upload-controls button{grid-column:1/-1}}
+@media(max-width:600px){.rm-filters-advanced,.rm-upload-controls{grid-template-columns:1fr}.rm-upload-controls button{grid-column:auto}}
+</style>
 </head>
 <body>
 <div id="login" class="login-shell">
@@ -1115,23 +1129,31 @@ function recon(){
   if(S.role!=='admin') return empty('Admins only.');
   const props=(S.props||[]);
   const propOptions=props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('');
+  const currentMonth=today().slice(0,7);
+  const monthStart=currentMonth+'-01';
   $('#view').innerHTML=`
     <div class="recon-intro p rm-hero">
       <div><div class="recon-eyebrow">HHG MANAGEMENT REPORTING · ACTUAL PERFORMANCE</div>
       <h2>Accommodation revenue monitoring, grounded in posted room charges.</h2>
-      <p>Monitor room charges by service date, property and booking channel. Taxes, fees, ancillary sales and collections are reported separately and are not added to room revenue.</p>
+      <p>Review Cloudbeds transactions by transaction date, check-in date and business date. Revenue categories remain separated so collections, taxes and fees are not mistaken for room revenue.</p>
       <div class="recon-status"><span class="recon-status-dot"></span>Admin access · Read-only transaction monitoring</div></div>
-      <div class="rm-hero-note"><strong>REPORTING BASIS</strong><span>Service Date</span><small>Room charges are attributed to the date of the accommodation service, not the reservation booking date or payment date.</small></div>
+      <div class="rm-hero-note"><strong>REVENUE ATTRIBUTION</strong><span>Service Date</span><small>Room charges are grouped by the accommodation service date. The three date filters below independently select the transaction population.</small></div>
     </div>
     <div class="rm-toolbar">
-      <div class="rm-filters">
-        <div><label for="rmFrom">Service date from</label><input id="rmFrom" type="date" value="2025-01-01" min="2025-01-01"></div>
-        <div><label for="rmTo">Service date to</label><input id="rmTo" type="date" value="2026-11-11"></div>
+      <div class="rm-filters rm-filters-advanced">
         <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
+        <div class="rm-date-filter"><label for="rmTransactionMode">Transaction Date</label><select id="rmTransactionMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmTransactionRange"><input id="rmTransactionFrom" type="date" value="${monthStart}" aria-label="Transaction date from"><input id="rmTransactionTo" type="date" value="${today()}" aria-label="Transaction date to"></div></div>
+        <div class="rm-date-filter"><label for="rmCheckinMode">Check-in Date</label><select id="rmCheckinMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmCheckinRange" hidden><input id="rmCheckinFrom" type="date" aria-label="Check-in date from"><input id="rmCheckinTo" type="date" aria-label="Check-in date to"></div></div>
+        <div class="rm-date-filter"><label for="rmBusinessMode">Business Date</label><select id="rmBusinessMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmBusinessRange" hidden><input id="rmBusinessFrom" type="date" aria-label="Business date from"><input id="rmBusinessTo" type="date" aria-label="Business date to"></div></div>
         <button class="btn" id="txRefresh" type="button" style="margin:0;height:38px">Apply Filters</button>
       </div>
-      <div class="rm-filter-note">Filters apply to the selected service / transaction date basis. Room revenue uses Service Date.</div>
+      <div class="rm-filter-note">Date filters are independent and combined using AND. “All Dates” does not restrict that date field. Room revenue is attributed and trended by Service Date.</div>
     </div>
+    <section class="p rm-upload-panel" id="rmUploadPanel">
+      <div class="rm-panel-title"><div><h3>Transaction Data Upload</h3><p>Separate upload entry for Expanded Transaction Reports. Existing monitoring data is not deleted.</p></div><span class="rm-review-tag">Admin only</span></div>
+      <div class="rm-upload-controls"><div><label for="rmUploadProperty">Property</label><select id="rmUploadProperty">${props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('')}</select></div><div><label for="rmTransactionFile">Expanded Transaction Report</label><input id="rmTransactionFile" type="file" accept=".xlsx,.xls,.csv"></div><button class="btn" id="rmUploadButton" type="button" style="margin:0">Upload Transactions</button></div>
+      <p class="note" id="rmUploadMessage">Choose one consolidated Expanded Transaction Report for the selected property. Only the transaction report format is accepted.</p>
+    </section>
     <div id="txContent"><p class="mu">Loading revenue summary…</p></div>`;
   const box=$('#txContent');
   const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1167,24 +1189,62 @@ function recon(){
   };
   let allRows=[];
   const loadTransactions=async()=>{
-    box.innerHTML='<p class="mu">Loading Cloudbeds transaction history…</p>';
+    box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">0 records loaded</span></p>';
     const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
+    const filters=[
+      dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date'),
+      dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date'),
+      dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','business_date')
+    ];
+    const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
+    if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
     let collected=[],from=0,batch=1000;
     while(true){
-      const {data,error}=await sb.from('transaction_details').select(fields).order('transaction_date',{ascending:false}).range(from,from+batch-1);
-      if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table and Admin access.</p>`;return;}
-      const page=data||[];collected=collected.concat(page);if(page.length<batch)break;from+=batch;if(from>=100000)break;
+      let query=sb.from('transaction_details').select(fields);
+      const property=$('#rmProperty').value;
+      if(property)query=query.eq('property_id',property);
+      filters.forEach(f=>{
+        if(!f.active)return;
+        if(f.from)query=query.gte(f.field,f.from);
+        if(f.to)query=query.lte(f.field,f.to);
+      });
+      const {data,error}=await query.order('transaction_date',{ascending:false}).range(from,from+batch-1);
+      if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table, date-column types and Admin access.</p>`;return;}
+      const page=data||[];collected=collected.concat(page);
+      const progress=$('#rmLoadProgress');if(progress)progress.textContent=`${fmt(collected.length)} matching records loaded`;
+      if(page.length<batch)break;
+      from+=batch;
     }
     allRows=collected;render();
   };
-  const render=()=>{
-    const from=$('#rmFrom').value||'2025-01-01',to=$('#rmTo').value||'9999-12-31',property=$('#rmProperty').value;
-    if(from>to){box.innerHTML='<p class="err">The start date must be earlier than or equal to the end date.</p>';return;}
-    const scoped=allRows.filter(r=>!property||String(r.property_id)===String(property));
-    const filtered=scoped.filter(r=>{
-      const c=classify(r),d=c==='Room Revenue'?dateKey(r.service_date):(dateKey(r.business_date)||dateKey(r.transaction_date));
-      return d&&d>=from&&d<=to;
+  const dateFilter=(modeId,fromId,toId,field)=>{
+    const mode=$('#'+modeId).value;
+    if(mode==='all')return {active:false,field};
+    const from=$('#'+fromId).value,to=$('#'+toId).value;
+    if(mode==='month')return {active:true,field,from:monthStart,to:today()};
+    return {active:true,field,from:from||null,to:to||null};
+  };
+  const syncDateRanges=()=>{
+    [['rmTransactionMode','rmTransactionRange'],['rmCheckinMode','rmCheckinRange'],['rmBusinessMode','rmBusinessRange']].forEach(([mode,range])=>{
+      const el=$('#'+range);if(el)el.hidden=$('#'+mode).value==='all';
     });
+  };
+  const render=()=>{
+    const property=$('#rmProperty').value;
+    const filters=[
+      dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date'),
+      dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date'),
+      dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','business_date')
+    ];
+    const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
+    if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
+    const scoped=allRows.filter(r=>!property||String(r.property_id)===String(property));
+    const filtered=scoped.filter(r=>filters.every(f=>{
+      if(!f.active)return true;
+      const d=dateKey(r[f.field]);
+      if(!d)return false;
+      return (!f.from||d>=f.from)&&(!f.to||d<=f.to);
+    }));
     const roomRows=filtered.filter(r=>classify(r)==='Room Revenue'&&!isFlag(r.void_flag));
     const room=sum=>sum.reduce((a,r)=>a+signedAmount(r),0);
     const roomRevenue=room(roomRows);
@@ -1206,9 +1266,11 @@ function recon(){
     const byMonth=new Map();roomRows.forEach(r=>{const d=dateKey(r.service_date);if(d){const m=d.slice(0,7);byMonth.set(m,(byMonth.get(m)||0)+signedAmount(r));}});
     const monthRows=[...byMonth.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
     const maxMonth=Math.max(1,...monthRows.map(x=>Math.abs(x[1])));
+    const periodLabel=filters.map(f=>!f.active?`${f.field.replace('_',' ')}: All Dates`:`${f.field.replaceAll('_',' ')}: ${f.from||'earliest'} – ${f.to||'latest'}`).join(' · ');
     const txDate=r=>dateKey(r.service_date)||dateKey(r.business_date)||dateKey(r.transaction_date)||'—';
     box.innerHTML=`
-      <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Based on posted room charges with a valid Service Date.</p></div><span class="rm-period">${escapeHtml(from)} — ${escapeHtml(to)}</span></div>
+      <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Selected transaction population · Room revenue grouped by Service Date.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
+      <p class="rm-filter-note">${escapeHtml(periodLabel)}</p>
       <div class="rm-kpis rm-kpis-primary" id="rmOverview">
         <div class="c rm-kpi-main"><small>ROOM CHARGES</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
         <div class="c"><small>ANCILLARY SALES</small><b>${money(ancillary)}</b><i>Items, add-ons and services</i></div>
@@ -1234,16 +1296,47 @@ function recon(){
         <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments / collections</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div></div>
       </section>
       <section class="p" id="rmAlerts"><div class="rm-panel-title"><div><h3>Data quality &amp; monitoring</h3><p>Exceptions to review before treating this page as an official Accounting reconciliation.</p></div><span class="rm-review-tag">Validation required</span></div>
-        <div class="rm-quality-grid"><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected period</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected period</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected period</span></div></div>
+        <div class="rm-quality-grid"><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected filters</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected filters</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected filters</span></div></div>
         ${unclassified.length?`<p class="rm-warning">Unclassified transaction types include: ${[...new Set(unclassified.map(r=>String(r.transaction_type||'Blank')))].slice(0,8).map(escapeHtml).join(', ')}. Review these mappings before final reporting.</p>`:''}
       </section>
       <section class="p" id="rmTransactions"><div class="rm-panel-title"><div><h3>Transaction details</h3><p>Source-level records for audit and investigation.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
-        <details class="rm-tx-details"><summary>View transaction records (up to 300 rows)</summary><div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Service / Activity date</th><th>Transaction date</th><th>Guest / Reservation</th><th>Channel</th><th>Type</th><th>Classification</th><th>Debits</th><th>Credits</th><th>Net amount</th></tr></thead><tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.service_date)||'—')}</td><td>${escapeHtml(dateKey(r.transaction_date)||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${money(r.debits)}</td><td>${money(r.credits)}</td><td>${money(signedAmount(r))}</td></tr>`).join('')||'<tr><td colspan="10" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div></details>
+        <details class="rm-tx-details"><summary>View transaction records (first 300 rows)</summary><div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Transaction Date</th><th>Check-in Date</th><th>Business Date</th><th>Service Date</th><th>Guest / Reservation</th><th>Channel</th><th>Type</th><th>Classification</th><th>Debits</th><th>Credits</th><th>Net amount</th></tr></thead><tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.transaction_date)||'—')}</td><td>${escapeHtml(dateKey(r.check_in_date)||'—')}</td><td>${escapeHtml(dateKey(r.business_date)||'—')}</td><td>${escapeHtml(dateKey(r.service_date)||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${money(r.debits)}</td><td>${money(r.credits)}</td><td>${money(signedAmount(r))}</td></tr>`).join('')||'<tr><td colspan="12" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div></details>
       </section>
-      <p class="note">Loaded ${fmt(allRows.length)} transaction records. Room revenue includes Room Rate and Room Revenue classifications and uses Debits less Credits. Figures remain provisional until source completeness, manual entries, and Accounting treatment are validated. PCL Loyverse Room Charges are not automatically classified as room revenue.</p>`;
+      <p class="note">Loaded ${fmt(allRows.length)} transaction records. No 100,000-row client cutoff is applied. Room revenue includes Room Rate and Room Revenue classifications and uses Debits less Credits. Figures remain provisional until source completeness, manual entries, and Accounting treatment are validated. PCL Loyverse Room Charges are not automatically classified as room revenue.</p>`;
   };
-  ['rmFrom','rmTo','rmProperty'].forEach(id=>$('#'+id).addEventListener('change',render));
+  ['rmProperty','rmTransactionMode','rmCheckinMode','rmBusinessMode','rmTransactionFrom','rmTransactionTo','rmCheckinFrom','rmCheckinTo','rmBusinessFrom','rmBusinessTo'].forEach(id=>$('#'+id).addEventListener('change',syncDateRanges));
   $('#txRefresh').onclick=loadTransactions;
+  $('#rmUploadButton').onclick=async()=>{
+    const file=$('#rmTransactionFile').files?.[0],propertyId=+$('#rmUploadProperty').value,property=props.find(p=>p.id===propertyId),button=$('#rmUploadButton'),msg=$('#rmUploadMessage');
+    if(!file||!property){msg.textContent='Select a property and an Expanded Transaction Report first.';return;}
+    if(S.role!=='admin'){msg.textContent='Only administrators can upload transaction data.';return;}
+    button.disabled=true;button.textContent='Validating…';msg.textContent='Reading and validating the selected file…';
+    try{
+      const rows=await readRows(file),report=Imp.detect(rows);
+      if(report!=='Transactions')throw new Error('This is not a recognized Expanded Transaction Report. No records were imported.');
+      const parsed=Imp.parseTransactions(rows,propertyId,file.name);
+      const mapped=parsed.rows.map(x=>({...x,imported_by:S.user.email}));
+      if(!mapped.length)throw new Error('No transaction rows were found.');
+      const confirmed=await showUploadConfirm(`Import <b>${fmt(mapped.length)}</b> transaction records for <b>${escapeHtml(property.name)}</b> from <b>${escapeHtml(file.name)}</b>? Existing records with the same property, source filename and source row number will be skipped.`);
+      if(!confirmed){msg.textContent='Upload cancelled. No records were imported.';return;}
+      button.textContent='Uploading…';
+      await chunked(c=>sb.from('transaction_details').upsert(c,{onConflict:'property_id,source_file,source_row_number',ignoreDuplicates:true}),mapped);
+      const note=`${mapped.length} rows processed from ${file.name}`;
+      const {error:logError}=await logUp({property_id:propertyId,report:'Transactions',rows:mapped.length,result:'ok',message:note});
+      if(logError)console.warn('Transaction upload log warning:',logError.message);
+      msg.textContent=`Upload completed: ${fmt(mapped.length)} rows processed for ${property.name}. Refreshing monitoring data…`;
+      $('#rmTransactionFile').value='';
+      await loadTransactions();
+      msg.textContent=`Upload completed: ${fmt(mapped.length)} rows processed for ${property.name}.`;
+      toast('Transaction upload completed.');
+    }catch(e){
+      const message=String(e.message||e);
+      msg.textContent='Upload failed: '+message;
+      await logUp({property_id:propertyId,report:'Transactions',rows:0,result:'error',message:message.slice(0,300)});
+      toast('Transaction upload failed: '+message,'error',6000);
+    }finally{button.disabled=false;button.textContent='Upload Transactions';}
+  };
+  syncDateRanges();
   loadTransactions();
 }
 function escapeHtml(value){
