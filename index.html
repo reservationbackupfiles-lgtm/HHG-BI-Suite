@@ -1152,7 +1152,7 @@ function recon(){
     <section class="p rm-upload-panel" id="rmUploadPanel">
       <div class="rm-panel-title"><div><h3>Transaction Data Upload</h3><p>Separate upload entry for Expanded Transaction Reports. Existing monitoring data is not deleted.</p></div><span class="rm-review-tag">Admin only</span></div>
       <div class="rm-upload-controls"><div><label for="rmUploadProperty">Property</label><select id="rmUploadProperty">${props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('')}</select></div><div><label for="rmTransactionFile">Expanded Transaction Report</label><input id="rmTransactionFile" type="file" accept=".xlsx,.xls,.csv"></div><button class="btn" id="rmUploadButton" type="button" style="margin:0">Upload Transactions</button></div>
-      <p class="note" id="rmUploadMessage">Choose one consolidated Expanded Transaction Report for the selected property. Only the transaction report format is accepted.</p>
+      <p class="note" id="rmUploadMessage">Choose one consolidated Expanded Transaction Report for the selected property. Dates are normalized before saving; original source values remain in raw_data.</p>
     </section>
     <div id="txContent"><p class="mu">Loading revenue summary…</p></div>`;
   const box=$('#txContent');
@@ -1206,7 +1206,15 @@ function recon(){
       filters.forEach(f=>{
         if(!f.active)return;
         if(f.from)query=query.gte(f.field,f.from);
-        if(f.to)query=query.lte(f.field,f.to);
+        if(f.to){
+          if(f.field==='transaction_date'){
+            const nextDay=new Date(`${f.to}T00:00:00Z`);
+            nextDay.setUTCDate(nextDay.getUTCDate()+1);
+            query=query.lt(f.field,nextDay.toISOString().slice(0,10));
+          } else {
+            query=query.lte(f.field,f.to);
+          }
+        }
       });
       const {data,error}=await query.order('transaction_date',{ascending:false}).range(from,from+batch-1);
       if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table, date-column types and Admin access.</p>`;return;}
