@@ -286,6 +286,50 @@
     return (rows || []).findIndex(row => Array.isArray(row) &&
       ['propertyname','transactiontype','transactionamount','cloudbedstransactioncode'].every(k => row.map(norm).includes(k)));
   }
+  // Normalize Cloudbeds date values before writing to Supabase.
+  // Excel serials are converted using the Excel 1900 date system.
+  // Transaction timestamps retain their local wall-clock time (no timezone shift).
+  function transactionDateValue(value, includeTime = false) {
+    if (value == null || value === '') return null;
+
+    const excelSerial = n => {
+      if (!Number.isFinite(n) || n < 1 || n > 100000) return null;
+      const ms = Math.round(n * 86400000);
+      const d = new Date(Date.UTC(1899, 11, 30) + ms);
+      if (!Number.isFinite(d.getTime())) return null;
+      const date = d.toISOString().slice(0, 10);
+      if (!includeTime) return date;
+      const time = d.toISOString().slice(11, 19);
+      return `${date} ${time}`;
+    };
+
+    if (value instanceof Date && !isNaN(value)) {
+      const iso = value.toISOString();
+      return includeTime ? `${iso.slice(0, 10)} ${iso.slice(11, 19)}` : iso.slice(0, 10);
+    }
+
+    if (typeof value === 'number') return excelSerial(value);
+
+    const s = String(value).trim();
+    if (!s || s === '-') return null;
+
+    // Excel serials sometimes arrive as strings (especially from CSV imports).
+    if (/^\d{4,6}(\.\d+)?$/.test(s)) return excelSerial(Number(s));
+
+    // Preserve Cloudbeds property-local date/time strings without timezone conversion.
+    const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
+    if (isoMatch) {
+      if (!includeTime || !isoMatch[2]) return isoMatch[1];
+      return `${isoMatch[1]} ${isoMatch[2].length === 5 ? isoMatch[2] + ':00' : isoMatch[2]}`;
+    }
+
+    // Fallback for parseable date strings; use UTC components to avoid browser-local shifts.
+    const d = new Date(s);
+    if (isNaN(d)) return null;
+    const iso = d.toISOString();
+    return includeTime ? `${iso.slice(0, 10)} ${iso.slice(11, 19)}` : iso.slice(0, 10);
+  }
+
   function parseTransactions(rows, propertyId, sourceFile) {
     const hi = transactionHeaderIndex(rows);
     if (hi < 0) fail('the Expanded Transaction Report header (Property Name / Transaction Type / Transaction Amount / Cloudbeds Transaction Code)');
@@ -296,7 +340,7 @@
       const row=rows[i]; if(!Array.isArray(row)) continue;
       const transactionCode=textValue(get(row,'Cloudbeds Transaction Code'));
       const transactionType=textValue(get(row,'Transaction Type'));
-      const transactionDate=textValue(get(row,'Transaction Date Time - Property'));
+      const transactionDate=transactionDateValue(get(row,'Transaction Date Time - Property'), true);
       const transactionDescription=textValue(get(row,'Transaction Description'));
       // Ignore completely blank/footer rows; preserve zero-value and flagged transactions.
       if(!transactionCode && !transactionType && !transactionDate && !transactionDescription) continue;
@@ -306,8 +350,8 @@
         guest_name:textValue(get(row,'Primary Guest Full Name')), reservation_no:textValue(get(row,'Reservation Number')),
         reservation_source:textValue(get(row,'Reservation Source')), house_account_name:textValue(get(row,'House Account Name')),
         group_profile_name:textValue(get(row,'Group Profile Name')), reservation_status:textValue(get(row,'Reservation Status')),
-        check_in_date:textValue(get(row,'Check-In Date')), check_out_date:textValue(get(row,'Check-Out Date')),
-        transaction_date:transactionDate, business_date:textValue(get(row,'Business Date')), service_date:textValue(get(row,'Service Date')),
+        check_in_date:transactionDateValue(get(row,'Check-In Date')), check_out_date:transactionDateValue(get(row,'Check-Out Date')),
+        transaction_date:transactionDate, business_date:transactionDateValue(get(row,'Business Date')), service_date:transactionDateValue(get(row,'Service Date')),
         room_number:textValue(get(row,'Room Number')), room_type:textValue(get(row,'Room Type')),
         hotel_collect_booking_flag:textValue(get(row,'Hotel Collect Booking Flag')), card_type:textValue(get(row,'Card Type')),
         card_last_4_digits:textValue(get(row,'Card Last 4 Digits')), transaction_type:transactionType,
