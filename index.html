@@ -1197,40 +1197,46 @@ function recon(){
     const filters=[transactionFilter,serviceFilter,checkinFilter];
     const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
     if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
-    let collected=[],from=0,batch=1000;
-    while(true){
-      let query=sb.from('transaction_details').select(fields);
-      const property=$('#rmProperty').value;
-      if(property)query=query.eq('property_id',property);
-      const rangeExpr=f=>{
-        const parts=[];
-        if(f.from)parts.push(`${f.field}.gte.${f.from}`);
-        if(f.to){
-          if(f.field==='transaction_date'){
-            const nextDay=new Date(`${f.to}T00:00:00Z`);
-            nextDay.setUTCDate(nextDay.getUTCDate()+1);
-            parts.push(`${f.field}.lt.${nextDay.toISOString().slice(0,10)}`);
-          } else parts.push(`${f.field}.lte.${f.to}`);
-        }
-        return parts.length?(`and(${parts.join(',')})`):null;
-      };
-      const dateExpr=[transactionFilter,serviceFilter].filter(f=>f.active).map(rangeExpr).filter(Boolean);
-      if(dateExpr.length===1){
-        const f=dateExpr[0].slice(4,-1).split(',');
-        f.forEach(part=>{const [field,op,...value]=part.split('.');query=op==='gte'?query.gte(field,value.join('.')):query.lt(field,value.join('.'));});
-      } else if(dateExpr.length>1) query=query.or(dateExpr.join(','));
-      if(checkinFilter.active){
-        if(checkinFilter.from)query=query.gte('check_in_date',checkinFilter.from);
-        if(checkinFilter.to)query=query.lte('check_in_date',checkinFilter.to);
-      }
-      const {data,error}=await query.order('transaction_date',{ascending:false}).range(from,from+batch-1);
-      if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table, date-column types and Admin access.</p>`;return;}
-      const page=data||[];collected=collected.concat(page);
-      const progress=$('#rmLoadProgress');if(progress)progress.textContent=`${fmt(collected.length)} matching records loaded`;
-      if(page.length<batch)break;
-      from+=batch;
+    const property=$('#rmProperty').value;
+    const dateRanges=[transactionFilter,serviceFilter].filter(f=>f.active&&(f.from||f.to));
+    if(!dateRanges.length){
+      box.innerHTML='<p class="err">Please select a reporting period for Transaction Date or Revenue Service Date before loading the full transaction history.</p><p class="note">This protects the monitoring page from loading the entire historical transaction table at once.</p>';
+      return;
     }
-    allRows=collected;render();
+    const collectedById=new Map();
+    const batch=500;
+    for(const dateRange of dateRanges){
+      let from=0;
+      while(true){
+        let query=sb.from('transaction_details').select(fields);
+        if(property)query=query.eq('property_id',property);
+        if(dateRange.from)query=query.gte(dateRange.field,dateRange.from);
+        if(dateRange.to){
+          if(dateRange.field==='transaction_date'){
+            const nextDay=new Date(`${dateRange.to}T00:00:00Z`);
+            nextDay.setUTCDate(nextDay.getUTCDate()+1);
+            query=query.lt(dateRange.field,nextDay.toISOString().slice(0,10));
+          } else query=query.lte(dateRange.field,dateRange.to);
+        }
+        if(checkinFilter.active){
+          if(checkinFilter.from)query=query.gte('check_in_date',checkinFilter.from);
+          if(checkinFilter.to)query=query.lte('check_in_date',checkinFilter.to);
+        }
+        const {data,error}=await query.order(dateRange.field,{ascending:false}).range(from,from+batch-1);
+        if(error){
+          box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history using ${escapeHtml(dateRange.field)}. Check the transaction_details table, date-column indexes and Admin access.</p>`;
+          return;
+        }
+        const page=data||[];
+        page.forEach(row=>collectedById.set(String(row.id),row));
+        const progress=$('#rmLoadProgress');
+        if(progress)progress.textContent=`${fmt(collectedById.size)} unique matching records loaded`;
+        if(page.length<batch)break;
+        from+=batch;
+      }
+    }
+    allRows=[...collectedById.values()];
+    render();
   };
   const dateFilter=(modeId,fromId,toId,field)=>{
     const mode=$('#'+modeId).value;
