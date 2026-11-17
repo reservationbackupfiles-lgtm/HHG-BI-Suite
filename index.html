@@ -1189,54 +1189,64 @@ function recon(){
   };
   let allRows=[];
   const loadTransactions=async()=>{
-    box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">0 records loaded</span></p>';
-    const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
-    const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
-    const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
-    const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
-    const filters=[transactionFilter,serviceFilter,checkinFilter];
-    const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
-    if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
-    const property=$('#rmProperty').value;
-    const dateRanges=[transactionFilter,serviceFilter].filter(f=>f.active&&(f.from||f.to));
-    if(!dateRanges.length){
-      box.innerHTML='<p class="err">Please select a reporting period for Transaction Date or Revenue Service Date before loading the full transaction history.</p><p class="note">This protects the monitoring page from loading the entire historical transaction table at once.</p>';
-      return;
-    }
-    const collectedById=new Map();
-    const batch=500;
-    for(const dateRange of dateRanges){
-      let from=0;
-      while(true){
-        let query=sb.from('transaction_details').select(fields);
-        if(property)query=query.eq('property_id',property);
-        if(dateRange.from)query=query.gte(dateRange.field,dateRange.from);
-        if(dateRange.to){
-          if(dateRange.field==='transaction_date'){
-            const nextDay=new Date(`${dateRange.to}T00:00:00Z`);
-            nextDay.setUTCDate(nextDay.getUTCDate()+1);
-            query=query.lt(dateRange.field,nextDay.toISOString().slice(0,10));
-          } else query=query.lte(dateRange.field,dateRange.to);
-        }
-        if(checkinFilter.active){
-          if(checkinFilter.from)query=query.gte('check_in_date',checkinFilter.from);
-          if(checkinFilter.to)query=query.lte('check_in_date',checkinFilter.to);
-        }
-        const {data,error}=await query.order(dateRange.field,{ascending:false}).range(from,from+batch-1);
-        if(error){
-          box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history using ${escapeHtml(dateRange.field)}. Check the transaction_details table, date-column indexes and Admin access.</p>`;
-          return;
-        }
-        const page=data||[];
-        page.forEach(row=>collectedById.set(String(row.id),row));
-        const progress=$('#rmLoadProgress');
-        if(progress)progress.textContent=`${fmt(collectedById.size)} unique matching records loaded`;
-        if(page.length<batch)break;
-        from+=batch;
+    box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">Preparing queries</span></p>';
+    try{
+      const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
+      const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
+      const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
+      const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
+      const filters=[transactionFilter,serviceFilter,checkinFilter];
+      const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
+      if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
+      const property=$('#rmProperty').value;
+      const dateRanges=[transactionFilter,serviceFilter].filter(f=>f.active&&(f.from||f.to));
+      if(!dateRanges.length){
+        box.innerHTML='<p class="err">Please select a reporting period for Transaction Date or Revenue Service Date before loading the full transaction history.</p><p class="note">This protects the monitoring page from loading the entire historical transaction table at once.</p>';
+        return;
       }
+      const collectedById=new Map();
+      const batch=500;
+      for(const dateRange of dateRanges){
+        let from=0,pageNumber=0;
+        while(true){
+          const progress=$('#rmLoadProgress');
+          if(progress)progress.textContent=`Loading ${dateRange.field.replaceAll('_',' ')} · batch ${pageNumber+1} · ${fmt(collectedById.size)} unique records collected`;
+          let query=sb.from('transaction_details').select(fields);
+          if(property)query=query.eq('property_id',property);
+          if(dateRange.from)query=query.gte(dateRange.field,dateRange.from);
+          if(dateRange.to){
+            if(dateRange.field==='transaction_date'){
+              const nextDay=new Date(`${dateRange.to}T00:00:00Z`);
+              nextDay.setUTCDate(nextDay.getUTCDate()+1);
+              query=query.lt(dateRange.field,nextDay.toISOString().slice(0,10));
+            } else query=query.lte(dateRange.field,dateRange.to);
+          }
+          if(checkinFilter.active){
+            if(checkinFilter.from)query=query.gte('check_in_date',checkinFilter.from);
+            if(checkinFilter.to)query=query.lte('check_in_date',checkinFilter.to);
+          }
+          const {data,error}=await query.order(dateRange.field,{ascending:false}).range(from,from+batch-1);
+          if(error){
+            box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history using ${escapeHtml(dateRange.field)} at batch ${pageNumber+1}. No partial figures were rendered.</p>`;
+            return;
+          }
+          const page=data||[];
+          page.forEach(row=>collectedById.set(String(row.id),row));
+          pageNumber++;
+          if(page.length<batch)break;
+          from+=batch;
+        }
+      }
+      allRows=[...collectedById.values()];
+      const progress=$('#rmLoadProgress');
+      if(progress)progress.textContent=`Loaded ${fmt(allRows.length)} unique records. Preparing revenue calculations…`;
+      await new Promise(resolve=>setTimeout(resolve,0));
+      render();
+    }catch(error){
+      const message=String(error?.message||error);
+      box.innerHTML=`<p class="err">Revenue Monitoring could not finish loading: ${escapeHtml(message)}</p><p class="note">The transaction query may have completed, but the page could not finish processing or rendering the results. No figures should be treated as final.</p>`;
+      console.error('Revenue Monitoring load/render error:',error);
     }
-    allRows=[...collectedById.values()];
-    render();
   };
   const dateFilter=(modeId,fromId,toId,field)=>{
     const mode=$('#'+modeId).value;
