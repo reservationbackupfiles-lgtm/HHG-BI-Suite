@@ -1286,7 +1286,7 @@ function recon(){
         <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Separate from room revenue</i></div>
       </div>
       <div class="rm-kpis rm-kpis-secondary">
-        <div class="c"><small>PAYMENTS / COLLECTIONS</small><b>${money(payments)}</b><i>Cash movement · not revenue</i></div>
+        <div class="c"><small>PAYMENTS RECEIVED</small><b>${money(payments)}</b><i>Payments recorded in Cloudbeds · not revenue</i></div>
         <div class="c"><small>REFUNDS</small><b>${money(refunds)}</b><i>Shown separately</i></div>
         <div class="c"><small>ADJUSTMENTS</small><b>${money(adjustments)}</b><i>Signed debit less credit</i></div>
         <div class="c"><small>UNCLASSIFIED RECORDS</small><b>${fmt(unclassified.length)}</b><i>Require mapping review</i></div>
@@ -1301,7 +1301,7 @@ function recon(){
       </div>
       <section class="p" id="rmTrend"><div class="rm-panel-title"><div><h3>Room revenue trend</h3><p>Monthly room charges based on Service Date.</p></div></div><div class="rm-month-grid">${monthRows.map(([m,v])=>`<div class="rm-month"><div><span>${escapeHtml(m)}</span><b>${money(v)}</b></div><div class="rm-bar-track"><i style="width:${Math.max(2,Math.abs(v)/maxMonth*100)}%"></i></div></div>`).join('')||'<p class="rm-empty">No room-charge records found.</p>'}</div></section>
       <section class="p" id="rmOther"><div class="rm-panel-title"><div><h3>Other financial activity</h3><p>Kept separate from actual room revenue to avoid mixing revenue, tax and cash collection.</p></div></div>
-        <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments / collections</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div></div>
+        <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments received</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div></div>
       </section>
       <section class="p" id="rmAlerts"><div class="rm-panel-title"><div><h3>Data quality &amp; monitoring</h3><p>Exceptions to review before treating this page as an official Accounting reconciliation.</p></div><span class="rm-review-tag">Validation required</span></div>
         <div class="rm-quality-grid"><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected filters</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected filters</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected filters</span></div></div>
