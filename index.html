@@ -1144,10 +1144,10 @@ function recon(){
         <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
         <div class="rm-date-filter"><label for="rmTransactionMode">Transaction Date</label><select id="rmTransactionMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmTransactionRange"><input id="rmTransactionFrom" type="date" value="${monthStart}" aria-label="Transaction date from"><input id="rmTransactionTo" type="date" value="${today()}" aria-label="Transaction date to"></div></div>
         <div class="rm-date-filter"><label for="rmCheckinMode">Check-in Date</label><select id="rmCheckinMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmCheckinRange" hidden><input id="rmCheckinFrom" type="date" aria-label="Check-in date from"><input id="rmCheckinTo" type="date" aria-label="Check-in date to"></div></div>
-        <div class="rm-date-filter"><label for="rmBusinessMode">Business Date</label><select id="rmBusinessMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmBusinessRange" hidden><input id="rmBusinessFrom" type="date" aria-label="Business date from"><input id="rmBusinessTo" type="date" aria-label="Business date to"></div></div>
+        <div class="rm-date-filter"><label for="rmBusinessMode">Revenue Service Date</label><select id="rmBusinessMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmBusinessRange" hidden><input id="rmBusinessFrom" type="date" aria-label="Revenue service date from"><input id="rmBusinessTo" type="date" aria-label="Revenue service date to"></div></div>
         <button class="btn" id="txRefresh" type="button" style="margin:0;height:38px">Apply Filters</button>
       </div>
-      <div class="rm-filter-note">Date filters are independent and combined using AND. “All Dates” does not restrict that date field. Room revenue is attributed and trended by Service Date.</div>
+      <div class="rm-filter-note">Revenue uses Revenue Service Date. Payments and refunds use Transaction Date. Check-in Date remains an optional additional filter. “All Dates” does not restrict that date field.</div>
     </div>
     <section class="p rm-upload-panel" id="rmUploadPanel">
       <div class="rm-panel-title"><div><h3>Transaction Data Upload</h3><p>Separate upload entry for Expanded Transaction Reports. Existing monitoring data is not deleted.</p></div><span class="rm-review-tag">Admin only</span></div>
@@ -1191,11 +1191,10 @@ function recon(){
   const loadTransactions=async()=>{
     box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">0 records loaded</span></p>';
     const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
-    const filters=[
-      dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date'),
-      dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date'),
-      dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','business_date')
-    ];
+    const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
+    const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
+    const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
+    const filters=[transactionFilter,serviceFilter,checkinFilter];
     const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
     if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
     let collected=[],from=0,batch=1000;
@@ -1203,19 +1202,27 @@ function recon(){
       let query=sb.from('transaction_details').select(fields);
       const property=$('#rmProperty').value;
       if(property)query=query.eq('property_id',property);
-      filters.forEach(f=>{
-        if(!f.active)return;
-        if(f.from)query=query.gte(f.field,f.from);
+      const rangeExpr=f=>{
+        const parts=[];
+        if(f.from)parts.push(`${f.field}.gte.${f.from}`);
         if(f.to){
           if(f.field==='transaction_date'){
             const nextDay=new Date(`${f.to}T00:00:00Z`);
             nextDay.setUTCDate(nextDay.getUTCDate()+1);
-            query=query.lt(f.field,nextDay.toISOString().slice(0,10));
-          } else {
-            query=query.lte(f.field,f.to);
-          }
+            parts.push(`${f.field}.lt.${nextDay.toISOString().slice(0,10)}`);
+          } else parts.push(`${f.field}.lte.${f.to}`);
         }
-      });
+        return parts.length?(`and(${parts.join(',')})`):null;
+      };
+      const dateExpr=[transactionFilter,serviceFilter].filter(f=>f.active).map(rangeExpr).filter(Boolean);
+      if(dateExpr.length===1){
+        const f=dateExpr[0].slice(4,-1).split(',');
+        f.forEach(part=>{const [field,op,...value]=part.split('.');query=op==='gte'?query.gte(field,value.join('.')):query.lt(field,value.join('.'));});
+      } else if(dateExpr.length>1) query=query.or(dateExpr.join(','));
+      if(checkinFilter.active){
+        if(checkinFilter.from)query=query.gte('check_in_date',checkinFilter.from);
+        if(checkinFilter.to)query=query.lte('check_in_date',checkinFilter.to);
+      }
       const {data,error}=await query.order('transaction_date',{ascending:false}).range(from,from+batch-1);
       if(error){box.innerHTML=`<p class="err">${escapeHtml(error.message)}</p><p class="note">Could not load transaction history. Check the transaction_details table, date-column types and Admin access.</p>`;return;}
       const page=data||[];collected=collected.concat(page);
@@ -1239,20 +1246,25 @@ function recon(){
   };
   const render=()=>{
     const property=$('#rmProperty').value;
-    const filters=[
-      dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date'),
-      dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date'),
-      dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','business_date')
-    ];
+    const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
+    const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
+    const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
+    const filters=[transactionFilter,serviceFilter,checkinFilter];
     const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
     if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
     const scoped=allRows.filter(r=>!property||String(r.property_id)===String(property));
-    const filtered=scoped.filter(r=>filters.every(f=>{
+    const matchesDate=(r,f)=>{
       if(!f.active)return true;
       const d=dateKey(r[f.field]);
       if(!d)return false;
       return (!f.from||d>=f.from)&&(!f.to||d<=f.to);
-    }));
+    };
+    const filtered=scoped.filter(r=>{
+      const category=classify(r);
+      const paymentDated=category==='Payments'||category==='Refunds';
+      const ownDateFilter=paymentDated?transactionFilter:serviceFilter;
+      return matchesDate(r,ownDateFilter)&&matchesDate(r,checkinFilter);
+    });
     const roomRows=filtered.filter(r=>classify(r)==='Room Revenue'&&!isFlag(r.void_flag));
     const room=sum=>sum.reduce((a,r)=>a+signedAmount(r),0);
     const roomRevenue=room(roomRows);
@@ -1274,7 +1286,7 @@ function recon(){
     const byMonth=new Map();roomRows.forEach(r=>{const d=dateKey(r.service_date);if(d){const m=d.slice(0,7);byMonth.set(m,(byMonth.get(m)||0)+signedAmount(r));}});
     const monthRows=[...byMonth.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
     const maxMonth=Math.max(1,...monthRows.map(x=>Math.abs(x[1])));
-    const periodLabel=filters.map(f=>!f.active?`${f.field.replace('_',' ')}: All Dates`:`${f.field.replaceAll('_',' ')}: ${f.from||'earliest'} – ${f.to||'latest'}`).join(' · ');
+    const periodLabel=[transactionFilter,serviceFilter,checkinFilter].map(f=>!f.active?`${f.field.replaceAll('_',' ')}: All Dates`:`${f.field.replaceAll('_',' ')}: ${f.from||'earliest'} – ${f.to||'latest'}`).join(' · ');
     const txDate=r=>dateKey(r.service_date)||dateKey(r.business_date)||dateKey(r.transaction_date)||'—';
     box.innerHTML=`
       <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Selected transaction population · Room revenue grouped by Service Date.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
