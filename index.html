@@ -1256,7 +1256,7 @@ function recon(){
     const roomRows=filtered.filter(r=>classify(r)==='Room Revenue'&&!isFlag(r.void_flag));
     const room=sum=>sum.reduce((a,r)=>a+signedAmount(r),0);
     const roomRevenue=room(roomRows);
-    const ancillary=filtered.filter(r=>classify(r)==='Ancillary Revenue').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
+    const ancillary=filtered.filter(r=>classify(r)==='Ancillary Revenue').reduce((a,r)=>a+signedAmount(r),0);
     const taxes=filtered.filter(r=>classify(r)==='Taxes').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
     const fees=filtered.filter(r=>classify(r)==='Fees').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
     const payments=filtered.filter(r=>classify(r)==='Payments').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
@@ -1267,7 +1267,7 @@ function recon(){
     const manualRoom=roomRows.filter(r=>clean(r.room_revenue_type).includes('manual')||clean(r.transaction_type)==='room revenue').length;
     const propertyTotals=new Map(props.map(p=>[String(p.id),{name:p.name,room:0,ancillary:0,taxes:0,fees:0,roomCount:0}]));
     roomRows.forEach(r=>{const key=String(r.property_id);if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,roomCount:0});const x=propertyTotals.get(key);x.room+=signedAmount(r);x.roomCount++;});
-    filtered.forEach(r=>{const key=String(r.property_id);if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,roomCount:0});const x=propertyTotals.get(key),c=classify(r),a=Math.abs(signedAmount(r));if(c==='Ancillary Revenue')x.ancillary+=a;if(c==='Taxes')x.taxes+=a;if(c==='Fees')x.fees+=a;});
+    filtered.forEach(r=>{const key=String(r.property_id);if(!propertyTotals.has(key))propertyTotals.set(key,{name:propName(key),room:0,ancillary:0,taxes:0,fees:0,roomCount:0});const x=propertyTotals.get(key),c=classify(r),a=signedAmount(r);if(c==='Ancillary Revenue')x.ancillary+=a;if(c==='Taxes')x.taxes+=Math.abs(a);if(c==='Fees')x.fees+=Math.abs(a);});
     const bySource=new Map();roomRows.forEach(r=>{const s=hasValue(r.reservation_source)?String(r.reservation_source):'Unassigned';bySource.set(s,(bySource.get(s)||0)+signedAmount(r));});
     const sourceRows=[...bySource.entries()].sort((a,b)=>b[1]-a[1]);
     const maxSource=Math.max(1,...sourceRows.map(x=>Math.abs(x[1])));
@@ -1280,8 +1280,9 @@ function recon(){
       <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Selected transaction population · Room revenue grouped by Service Date.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
       <p class="rm-filter-note">${escapeHtml(periodLabel)}</p>
       <div class="rm-kpis rm-kpis-primary" id="rmOverview">
-        <div class="c rm-kpi-main"><small>ROOM CHARGES</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
-        <div class="c"><small>ANCILLARY SALES</small><b>${money(ancillary)}</b><i>Items, add-ons and services</i></div>
+        <div class="c rm-kpi-main"><small>ROOM REVENUE</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
+        <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Items, add-ons and services · signed amount</i></div>
+        <div class="c"><small>TOTAL REVENUE</small><b>${money(roomRevenue+ancillary)}</b><i>Room Revenue + Ancillary Revenue · excludes taxes and fees</i></div>
         <div class="c"><small>TAXES</small><b>${money(taxes)}</b><i>Separate from room revenue</i></div>
         <div class="c"><small>FEES</small><b>${money(fees)}</b><i>Separate from room revenue</i></div>
       </div>
