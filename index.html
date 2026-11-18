@@ -1124,6 +1124,7 @@ document.addEventListener('keydown',e=>{
   document.addEventListener('pointercancel',finish);
 })();
 
+let rmTransactionCache = null;
 function recon(){
   $('#ttl').textContent='Revenue Monitoring';
   if(S.role!=='admin') return empty('Admins only.');
@@ -1236,6 +1237,7 @@ function recon(){
         }
       }
       allRows=[...collectedById.values()];
+      rmTransactionCache={key:cacheKey(),rows:allRows};
       const progress=$('#rmLoadProgress');
       if(progress)progress.textContent=`Loaded ${fmt(allRows.length)} unique records. Preparing revenue calculations…`;
       await new Promise(resolve=>setTimeout(resolve,0));
@@ -1385,8 +1387,18 @@ function recon(){
       toast('Transaction upload failed: '+message,'error',6000);
     }finally{button.disabled=false;button.textContent='Upload Transactions';}
   };
+  const cacheKey=()=>{
+    const tx=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
+    const svc=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
+    return JSON.stringify({property:$('#rmProperty').value,transaction:tx,service:svc});
+  };
   syncDateRanges();
-  loadTransactions();
+  if(rmTransactionCache && rmTransactionCache.key===cacheKey()){
+    allRows=rmTransactionCache.rows;
+    render();
+  }else{
+    loadTransactions();
+  }
 }
 function escapeHtml(value){
   return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
