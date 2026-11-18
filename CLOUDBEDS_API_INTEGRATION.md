@@ -30,6 +30,8 @@ The connector must map Cloudbeds property IDs to the existing HHG property codes
 
 The authoritative Cloudbeds property IDs will be discovered from the authorized getHotels response and verified against the property names before syncing.
 
+**Pre-sync data cleanup required:** the current repository schema uses `HJH` for J Boutique Hotel, while HHG's current operational code is `JBH`. The schema also lists NBR as 26 rooms, while the latest HHG correction is 25. Do not silently map or overwrite these values during API onboarding. Confirm the canonical property codes and room counts, then reconcile the existing `properties` table before enabling automated sync.
+
 ## Security architecture
 1. The GitHub Pages frontend must never contain a Cloudbeds API key, client secret, or service-role key.
 2. Store Cloudbeds credentials as Supabase Edge Function secrets (or another server-side secret manager).
