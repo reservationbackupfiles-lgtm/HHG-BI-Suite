@@ -1177,9 +1177,9 @@ function recon(){
   };
   const isInterEntity=r=>{
     const description=clean(r.transaction_description),category=clean(r.item_service_category),notes=clean(r.transaction_notes);
-    const ota=/\\b(agoda|airbnb|booking(?:\\.com)?|ctrip|c trip|expedia|trip\\.com|priceline)\\b/i;
-    const payable=/\\bpayable\\s+to\\b/i.test(description)||/\\bpayable\\s+to\\b/i.test(notes)||/affiliated payable|^payables$/.test(category);
-    const collectedBy=/\\bcollected by\\b/i.test(description)&&!ota.test(description);
+    const ota=/\b(agoda|airbnb|booking(?:\.com)?|ctrip|c trip|expedia|trip\.com|priceline)\b/i;
+    const payable=/\bpayable\s+to\b/i.test(description)||/\bpayable\s+to\b/i.test(notes)||/affiliated payable|^payables$/.test(category);
+    const collectedBy=/\bcollected by\b/i.test(description)&&!ota.test(description);
     return payable||collectedBy;
   };
   const classify=r=>{
