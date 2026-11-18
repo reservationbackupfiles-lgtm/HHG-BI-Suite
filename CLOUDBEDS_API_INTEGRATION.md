@@ -71,5 +71,24 @@ The authoritative Cloudbeds property IDs will be discovered from the authorized 
 - Once the server-side function is deployed, enter the key only as a Supabase secret through the Supabase project controls/CLI.
 - If a key is exposed, revoke/regenerate it in Cloudbeds immediately.
 
+
+## Supabase preparation implemented (2026-11-18)
+
+The following backend foundation has been added to the repository:
+
+- `supabase/migrations/202611180001_cloudbeds_integration.sql`
+  - Creates `cloudbeds_property_map` for explicit HHG-to-Cloudbeds property mapping.
+  - Creates `cloudbeds_sync_log` for connection/sync audit history.
+  - Enables RLS; mapping access is admin-only and sync-log writes are reserved for server-side service-role execution.
+  - This migration is additive and does not alter existing properties, historical revenue, reservations, or manual upload tables.
+- `supabase/functions/cloudbeds-admin/index.ts`
+  - Authenticates the caller's Supabase JWT.
+  - Independently checks `profiles.role = 'admin'`.
+  - Provides a status-only action that reports whether the Cloudbeds secret is configured, current mapping rows, and latest sync status.
+  - Does not call Cloudbeds, return secrets, or write API data.
+- `supabase/functions/README.md` contains deployment and secret-handling instructions.
+
+**Not yet deployed:** GitHub repository files have been prepared, but no Supabase database migration or Edge Function deployment has been run from this workspace. Apply the migration and deploy the function only after confirming the target Supabase project. The current property-code/inventory discrepancies remain intentionally untouched.
+
 ## Current implementation status
-**Planning / pre-integration.** No Cloudbeds credential has been installed, no live API request has been made, and no API-sourced data is being written to production tables yet. The existing report upload workflow remains the source of record until the API integration has been tested and reconciled.
+**Backend scaffold prepared; API integration remains pre-connection.** No Cloudbeds credential has been installed, no live API request has been made, and no API-sourced data is being written to production tables yet. The existing report upload workflow remains the source of record until the API integration has been tested and reconciled.
