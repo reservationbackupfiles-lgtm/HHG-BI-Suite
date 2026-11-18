@@ -1,10 +1,11 @@
 -- HHG BI Suite: Cloudbeds integration foundation
--- Additive migration only. Does not modify existing property codes, inventory,
--- historical transaction data, or current report-upload tables.
+-- Additive only: references the existing properties.id primary key.
+-- Does not modify existing properties, inventory, or historical data.
 
 create table if not exists public.cloudbeds_property_map (
   id bigint generated always as identity primary key,
-  hhg_property_code text not null unique references public.properties(code) on update cascade on delete restrict,
+  hhg_property_id integer not null unique
+    references public.properties(id) on update cascade on delete restrict,
   cloudbeds_property_id text unique,
   cloudbeds_property_name text,
   mapping_status text not null default 'pending'
@@ -23,7 +24,8 @@ create table if not exists public.cloudbeds_sync_log (
   started_at timestamptz not null default now(),
   finished_at timestamptz,
   requested_by uuid references auth.users(id) on delete set null,
-  hhg_property_code text references public.properties(code) on update cascade on delete set null,
+  hhg_property_id integer references public.properties(id)
+    on update cascade on delete set null,
   cloudbeds_property_id text,
   sync_type text not null default 'connection_check',
   endpoint text,
@@ -41,7 +43,7 @@ create table if not exists public.cloudbeds_sync_log (
 create index if not exists cloudbeds_sync_log_started_at_idx
   on public.cloudbeds_sync_log (started_at desc);
 create index if not exists cloudbeds_sync_log_property_idx
-  on public.cloudbeds_sync_log (hhg_property_code, started_at desc);
+  on public.cloudbeds_sync_log (hhg_property_id, started_at desc);
 
 alter table public.cloudbeds_property_map enable row level security;
 alter table public.cloudbeds_sync_log enable row level security;
@@ -61,5 +63,4 @@ create policy "admin reads Cloudbeds sync log"
   on public.cloudbeds_sync_log for select to authenticated
   using (public.is_admin());
 
--- Writes to the sync log are server-side only via the Edge Function service role.
--- No authenticated INSERT/UPDATE/DELETE policy is intentionally created.
+-- Sync-log writes are server-side only via the Edge Function service role.
