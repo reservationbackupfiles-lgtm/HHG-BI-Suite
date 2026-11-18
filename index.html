@@ -686,6 +686,7 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 
   <button class="nav" data-v="admin" id="navAdmin" hidden><span class="nav-mark">⇧</span>Upload &amp; Logs</button>
   <button class="nav" data-v="users" id="navUsers" hidden><span class="nav-mark">♙</span>Users</button>
+  <button class="nav" data-v="api" id="navApi" hidden><span class="nav-mark">⌘</span>Cloudbeds API</button>
 
   <div class="who">
     <span id="me"></span>
@@ -905,7 +906,7 @@ async function start(user){
   S.role = p?.role || 'viewer';
 
   $('#me').textContent = user.email + ' (' + S.role + ')';
-  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navRecon').hidden = S.role !== 'admin';
+  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navRecon').hidden = $('#navApi').hidden = S.role !== 'admin';
 
   $('#acc').textContent =
     S.role !== 'admin' && (p?.view_from || p?.view_to)
@@ -1403,7 +1404,57 @@ function recon(){
 function escapeHtml(value){
   return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
-const V = {dash, compare, pace, res, cancel, recon, reports, admin, users};
+/* Cloudbeds API connection readiness — admin only; credentials are configured server-side. */
+function api(){
+  $('#ttl').textContent='Cloudbeds API Integration';
+  if(S.role!=='admin') return empty('Admins only.');
+  const properties=(S.props||[]).map(p=>{
+    const code=String(p.code||'');
+    const note=code==='HJH'?'Review code: HHG operational code is JBH.':code==='NBR'?'Review inventory: latest HHG correction is 25 rooms.':'Awaiting Cloudbeds property ID mapping.';
+    const review=code==='HJH'||(code==='NBR'&&Number(p.total_rooms||p.rooms||0)!==25);
+    return [p.name||code,code,review?'Review required':'Pending',note];
+  });
+  $('#view').innerHTML=`
+    <section class="p">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><h3 style="margin:0 0 5px">Cloudbeds connection</h3><p class="note" style="margin:0">Preparation workspace · no API credentials installed</p></div>
+        <span class="pill">● Not connected</span>
+      </div>
+      <div class="cards" style="margin-top:16px">
+        <div class="c"><small>Preferred connection</small><b style="font-size:18px">Group API</b><i>One authorized credential for multiple properties, subject to Cloudbeds account access.</i></div>
+        <div class="c"><small>Fallback</small><b style="font-size:18px">Per-property API</b><i>Supported as an alternative if group access is unavailable.</i></div>
+        <div class="c"><small>Current status</small><b style="font-size:18px">Preparation</b><i>Manual Cloudbeds report uploads remain active.</i></div>
+      </div>
+      <p class="note">Security: API credentials will never be entered or displayed on this page. They must be stored as Supabase Edge Function secrets. This browser page will call a secured server-side function only after the backend is deployed.</p>
+    </section>
+    <section class="p">
+      <h3>Connection readiness checklist</h3>
+      <table><tr><th>Requirement</th><th>Status</th><th>Notes</th></tr>
+      <tr><td>Group-level API access confirmed</td><td>Pending</td><td>Awaiting Cloudbeds confirmation</td></tr>
+      <tr><td>Read-only API scopes approved</td><td>Pending</td><td>Reservations, room/revenue reporting and transaction details to be verified</td></tr>
+      <tr><td>Cloudbeds property IDs mapped</td><td>Pending</td><td>Will verify using authorized getHotels response</td></tr>
+      <tr><td>Supabase Edge Function deployed</td><td>Not started</td><td>Server-side credential handling and admin validation</td></tr>
+      <tr><td>API data reconciled to exports</td><td>Not started</td><td>Must pass before API data becomes a reporting source</td></tr></table>
+    </section>
+    <section class="p">
+      <h3>HHG property mapping</h3>
+      <p class="note">Cloudbeds property IDs are intentionally blank until retrieved from the authorized account. Do not infer them from HHG codes or Supabase IDs.</p>
+      ${tbl(['Property','HHG Code','Cloudbeds Property ID','Mapping status / action'],properties.map(r=>[r[0],r[1],'<span class="mu">Not retrieved</span>',r[3]]))}
+    </section>
+    <section class="p">
+      <h3>Planned synchronization</h3>
+      <table><tr><th>Data area</th><th>Planned method</th><th>Status</th></tr>
+      <tr><td>Reservations</td><td>Read-only API sync</td><td>Pending endpoint and scope verification</td></tr>
+      <tr><td>Room revenue / ADR</td><td>Read-only API sync</td><td>Pending endpoint and field reconciliation</td></tr>
+      <tr><td>Transaction / folio details</td><td>Read-only API sync</td><td>Pending endpoint, permissions and stable transaction ID verification</td></tr>
+      <tr><td>Pace / availability</td><td>API or report-based, subject to endpoint availability</td><td>Pending verification</td></tr></table>
+      <p class="note">Sync controls will appear here only after the backend is connected and tested. No test request, import, or database write is performed by this page yet.</p>
+      <button class="btn" type="button" disabled title="Available after API credentials and server-side integration are configured">Test connection · Not available yet</button>
+      <button class="btn" type="button" disabled title="Available after API credentials and server-side integration are configured">Sync now · Not available yet</button>
+    </section>
+  `;
+}
+const V = {dash, compare, pace, res, cancel, recon, reports, admin, users, api};
 function show(v){
   // Revenue Monitoring is restricted to authenticated admin users.
   if (v === 'recon' && S.role !== 'admin') {
