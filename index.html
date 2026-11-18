@@ -1191,7 +1191,7 @@ function recon(){
   const loadTransactions=async()=>{
     box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">Preparing queries</span></p>';
     try{
-      const fields='id,property_id,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_date_normalized,service_date_normalized,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
+      const fields='id,property_id,source_file,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_date_normalized,service_date_normalized,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
       const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
       const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
       const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
@@ -1258,7 +1258,17 @@ function recon(){
     const filters=[transactionFilter,serviceFilter,checkinFilter];
     const invalid=filters.find(f=>f.active&&f.from&&f.to&&f.from>f.to);
     if(invalid){box.innerHTML='<p class="err">A date range has an invalid start date. The From date must be earlier than or equal to the To date.</p>';return;}
-    const scoped=allRows.filter(r=>!property||String(r.property_id)===String(property));
+    const duplicateImportFile='Expanded Transaction Report with Details.csv';
+    const duplicateImportProperties=new Set(['1','2','3']);
+    const excludedDuplicateRows=allRows.filter(r=>
+      (!property||String(r.property_id)===String(property)) &&
+      duplicateImportProperties.has(String(r.property_id)) &&
+      r.source_file===duplicateImportFile
+    ).length;
+    const scoped=allRows.filter(r=>
+      (!property||String(r.property_id)===String(property)) &&
+      !(duplicateImportProperties.has(String(r.property_id)) && r.source_file===duplicateImportFile)
+    );
     const matchesDate=(r,f)=>{
       if(!f.active)return true;
       const d=dateKey(r[f.field]);
@@ -1297,6 +1307,7 @@ function recon(){
     box.innerHTML=`
       <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Selected transaction population · Room revenue grouped by Service Date.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
       <p class="rm-filter-note">${escapeHtml(periodLabel)}</p>
+      <p class="rm-filter-note">Duplicate-import control: ${fmt(excludedDuplicateRows)} November source rows excluded for HHO, JBH and NBG because they are already represented in their reconciled historical files. The same source file remains included for the other properties.</p>
       <div class="rm-kpis rm-kpis-primary" id="rmOverview">
         <div class="c rm-kpi-main"><small>ROOM REVENUE</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
         <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Items, add-ons and services · signed amount</i></div>
