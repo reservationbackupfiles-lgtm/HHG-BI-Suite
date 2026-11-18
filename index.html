@@ -1169,19 +1169,27 @@ function recon(){
   };
   const clean=v=>String(v??'').trim().toLowerCase();
   const hasValue=v=>v!==null&&v!==undefined&&String(v).trim()!==''&&String(v).trim()!=='-';
-  const textOf=r=>[r.transaction_type,r.room_revenue_type,r.tax_type,r.fee_type,r.pos_charge_category,r.item_service_category,r.transaction_description,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code].filter(hasValue).join(' ').toLowerCase();
+  const textOf=r=>[r.transaction_type,r.room_revenue_type,r.tax_type,r.fee_type,r.pos_charge_category,r.item_service_category,r.transaction_description,r.transaction_notes,r.cloudbeds_transaction_code_description,r.cloudbeds_transaction_code].filter(hasValue).join(' ').toLowerCase();
   const signedAmount=r=>{
     const d=Number(r.debits),c=Number(r.credits);
     if(Number.isFinite(d)&&Number.isFinite(c)&&(hasValue(r.debits)||hasValue(r.credits)))return d-c;
     return Number(r.transaction_amount)||0;
   };
+  const isInterEntity=r=>{
+    const description=clean(r.transaction_description),category=clean(r.item_service_category),notes=clean(r.transaction_notes);
+    const ota=/\\b(agoda|airbnb|booking(?:\\.com)?|ctrip|c trip|expedia|trip\\.com|priceline)\\b/i;
+    const payable=/\\bpayable\\s+to\\b/i.test(description)||/\\bpayable\\s+to\\b/i.test(notes)||/affiliated payable|^payables$/.test(category);
+    const collectedBy=/\\bcollected by\\b/i.test(description)&&!ota.test(description);
+    return payable||collectedBy;
+  };
   const classify=r=>{
     const t=textOf(r),type=clean(r.transaction_type),rr=clean(r.room_revenue_type);
     if(isFlag(r.void_flag))return 'Void';
+    if(isInterEntity(r))return 'Inter-Entity';
     if(isFlag(r.refund_flag)||/refund/.test(t))return 'Refunds';
     if(type==='room rate'||type==='room revenue'||rr==='room rate'||rr==='room revenue - manual'||rr==='room revenue')return 'Room Revenue';
     if(type==='payment'||/payment|deposit|collection|paid/.test(type))return 'Payments';
-    if(type==='tax'||hasValue(r.tax_type)||/\btax\b|vat/.test(type))return 'Taxes';
+    if(type==='tax'||hasValue(r.tax_type)||/\\btax\\b|vat/.test(type))return 'Taxes';
     if(type==='fee'||hasValue(r.fee_type)||/fee|service charge/.test(type))return 'Fees';
     if(type==='adjustment'||isFlag(r.adjustment_flag)||/adjustment|correction/.test(t))return 'Adjustments';
     if(type==='items & services'||type==='add-on'||r.pos_charge_category||r.item_service_category||/add.?on|item|service|pos charge|food|beverage|transport|tour|laundry|massage|rental/.test(t))return 'Ancillary Revenue';
@@ -1191,7 +1199,7 @@ function recon(){
   const loadTransactions=async()=>{
     box.innerHTML='<p class="mu">Loading Cloudbeds transaction history… <span id="rmLoadProgress">Preparing queries</span></p>';
     try{
-      const fields='id,property_id,source_file,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_date_normalized,service_date_normalized,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
+      const fields='id,property_id,source_file,guest_name,reservation_no,reservation_source,house_account_name,transaction_date,business_date,service_date,transaction_date_normalized,service_date_normalized,transaction_type,void_flag,refund_flag,adjustment_flag,tax_type,fee_type,room_revenue_type,pos_charge_category,item_service_category,transaction_amount,debits,credits,transaction_description,transaction_notes,cloudbeds_transaction_code,cloudbeds_transaction_code_description,transaction_source,reservation_status,check_in_date,check_out_date';
       const transactionFilter=dateFilter('rmTransactionMode','rmTransactionFrom','rmTransactionTo','transaction_date');
       const serviceFilter=dateFilter('rmBusinessMode','rmBusinessFrom','rmBusinessTo','service_date');
       const checkinFilter=dateFilter('rmCheckinMode','rmCheckinFrom','rmCheckinTo','check_in_date');
@@ -1277,7 +1285,7 @@ function recon(){
     };
     const filtered=scoped.filter(r=>{
       const category=classify(r);
-      const paymentDated=category==='Payments'||category==='Refunds';
+      const paymentDated=category==='Payments'||category==='Refunds'||(category==='Inter-Entity'&&clean(r.transaction_type)==='payment');
       const ownDateFilter=paymentDated?transactionFilter:serviceFilter;
       return matchesDate(r,ownDateFilter)&&matchesDate(r,checkinFilter);
     });
@@ -1291,6 +1299,8 @@ function recon(){
     const refunds=filtered.filter(r=>classify(r)==='Refunds').reduce((a,r)=>a+Math.abs(signedAmount(r)),0);
     const adjustments=filtered.filter(r=>classify(r)==='Adjustments').reduce((a,r)=>a+signedAmount(r),0);
     const unclassified=filtered.filter(r=>classify(r)==='Unclassified');
+    const interEntityRows=filtered.filter(r=>classify(r)==='Inter-Entity');
+    const interEntityNet=interEntityRows.reduce((a,r)=>a+signedAmount(r),0);
     const missingServiceDate=scoped.filter(r=>classify(r)==='Room Revenue'&&!dateKey(r.service_date)).length;
     const manualRoom=roomRows.filter(r=>clean(r.room_revenue_type).includes('manual')||clean(r.transaction_type)==='room revenue').length;
     const propertyTotals=new Map(props.map(p=>[String(p.id),{name:p.name,room:0,ancillary:0,taxes:0,fees:0,roomCount:0}]));
@@ -1319,6 +1329,7 @@ function recon(){
         <div class="c"><small>PAYMENTS RECEIVED</small><b>${money(payments)}</b><i>Payments recorded in Cloudbeds · not revenue</i></div>
         <div class="c"><small>REFUNDS</small><b>${money(refunds)}</b><i>Shown separately</i></div>
         <div class="c"><small>ADJUSTMENTS</small><b>${money(adjustments)}</b><i>Signed debit less credit</i></div>
+        <div class="c"><small>INTER-ENTITY RECORDS</small><b>${fmt(interEntityRows.length)}</b><i>${money(interEntityNet)} net · excluded from external revenue</i></div>
         <div class="c"><small>UNCLASSIFIED RECORDS</small><b>${fmt(unclassified.length)}</b><i>Require mapping review</i></div>
       </div>
       <div class="rm-section-grid" id="rmBreakdown">
@@ -1331,16 +1342,16 @@ function recon(){
       </div>
       <section class="p" id="rmTrend"><div class="rm-panel-title"><div><h3>Room revenue trend</h3><p>Monthly room charges based on Service Date.</p></div></div><div class="rm-month-grid">${monthRows.map(([m,v])=>`<div class="rm-month"><div><span>${escapeHtml(m)}</span><b>${money(v)}</b></div><div class="rm-bar-track"><i style="width:${Math.max(2,Math.abs(v)/maxMonth*100)}%"></i></div></div>`).join('')||'<p class="rm-empty">No room-charge records found.</p>'}</div></section>
       <section class="p" id="rmOther"><div class="rm-panel-title"><div><h3>Other financial activity</h3><p>Kept separate from actual room revenue to avoid mixing revenue, tax and cash collection.</p></div></div>
-        <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments received</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div></div>
+        <div class="rm-other-grid"><div><span>Ancillary sales</span><b>${money(ancillary)}</b></div><div><span>Taxes</span><b>${money(taxes)}</b></div><div><span>Fees</span><b>${money(fees)}</b></div><div><span>Payments received</span><b>${money(payments)}</b></div><div><span>Refunds</span><b>${money(refunds)}</b></div><div><span>Adjustments</span><b>${money(adjustments)}</b></div><div><span>Inter-entity activity (net)</span><b>${money(interEntityNet)}</b></div></div>
       </section>
       <section class="p" id="rmAlerts"><div class="rm-panel-title"><div><h3>Data quality &amp; monitoring</h3><p>Exceptions to review before treating this page as an official Accounting reconciliation.</p></div><span class="rm-review-tag">Validation required</span></div>
-        <div class="rm-quality-grid"><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected filters</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected filters</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected filters</span></div></div>
+        <div class="rm-quality-grid"><div><b>${fmt(interEntityRows.length)}</b><span>Inter-entity records excluded from external revenue</span></div><div><b>${fmt(unclassified.length)}</b><span>Unclassified records in selected filters</span></div><div><b>${fmt(missingServiceDate)}</b><span>Room-charge records missing Service Date across selected property scope</span></div><div><b>${fmt(manualRoom)}</b><span>Manual room-revenue entries in selected filters</span></div><div><b>${fmt(filtered.filter(r=>isFlag(r.void_flag)).length)}</b><span>Void records in selected filters</span></div></div>
         ${unclassified.length?`<p class="rm-warning">Unclassified transaction types include: ${[...new Set(unclassified.map(r=>String(r.transaction_type||'Blank')))].slice(0,8).map(escapeHtml).join(', ')}. Review these mappings before final reporting.</p>`:''}
       </section>
       <section class="p" id="rmTransactions"><div class="rm-panel-title"><div><h3>Transaction details</h3><p>Source-level records for audit and investigation.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
         <details class="rm-tx-details"><summary>View transaction records (first 300 rows)</summary><div class="rm-table-wrap"><table><thead><tr><th>Property</th><th>Transaction Date</th><th>Check-in Date</th><th>Business Date</th><th>Service Date</th><th>Guest / Reservation</th><th>Channel</th><th>Type</th><th>Classification</th><th>Debits</th><th>Credits</th><th>Net amount</th></tr></thead><tbody>${filtered.slice(0,300).map(r=>`<tr><td>${escapeHtml(propName(r.property_id))}</td><td>${escapeHtml(dateKey(r.transaction_date)||'—')}</td><td>${escapeHtml(dateKey(r.check_in_date)||'—')}</td><td>${escapeHtml(dateKey(r.business_date)||'—')}</td><td>${escapeHtml(dateKey(r.service_date)||'—')}</td><td>${escapeHtml(r.guest_name||'—')}<br><small>${escapeHtml(r.reservation_no||r.house_account_name||'—')}</small></td><td>${escapeHtml(r.reservation_source||r.transaction_source||'—')}</td><td>${escapeHtml(r.transaction_type||'—')}</td><td>${escapeHtml(classify(r))}</td><td>${money(r.debits)}</td><td>${money(r.credits)}</td><td>${money(signedAmount(r))}</td></tr>`).join('')||'<tr><td colspan="12" class="rm-empty">No transactions found for the selected filters.</td></tr>'}</tbody></table></div></details>
       </section>
-      <p class="note">Loaded ${fmt(allRows.length)} transaction records. No 100,000-row client cutoff is applied. Room revenue includes Room Rate and Room Revenue classifications and uses Debits less Credits. Figures remain provisional until source completeness, manual entries, and Accounting treatment are validated. PCL Loyverse Room Charges are not automatically classified as room revenue.</p>`;
+      <p class="note">Loaded ${fmt(allRows.length)} transaction records. No 100,000-row client cutoff is applied. Room revenue includes Room Rate and Room Revenue classifications and uses Debits less Credits. Payable-to-entity entries and non-OTA Collected-by entries are classified as Inter-Entity and excluded from external revenue and ordinary Payments Received. Figures remain provisional until source completeness, manual entries, and Accounting treatment are validated. PCL Loyverse Room Charges are not automatically classified as room revenue.</p>`;
   };
   ['rmProperty','rmTransactionMode','rmCheckinMode','rmBusinessMode','rmTransactionFrom','rmTransactionTo','rmCheckinFrom','rmCheckinTo','rmBusinessFrom','rmBusinessTo'].forEach(id=>$('#'+id).addEventListener('change',syncDateRanges));
   $('#txRefresh').onclick=loadTransactions;
