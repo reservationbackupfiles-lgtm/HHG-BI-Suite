@@ -1,7 +1,5 @@
 // HHG BI Suite — Cloudbeds admin/status Edge Function
-// This is a secure readiness/status endpoint only. It does NOT call Cloudbeds
-// or synchronize production data. Add and validate Cloudbeds API credentials
-// only as Supabase Edge Function secrets, never in GitHub or browser code.
+// Status-only preparation endpoint. No Cloudbeds calls or production sync.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -32,7 +30,6 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Authentication required." }, 401);
 
-  // Verify the caller's JWT, then independently verify the HHG admin role.
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -58,7 +55,6 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json({ error: "A JSON request body is required." }, 400);
   }
-
   if (body.action !== "status") {
     return json({ error: "Unsupported action. Only status is enabled in this preparation phase." }, 400);
   }
@@ -66,8 +62,8 @@ Deno.serve(async (req: Request) => {
   const cloudbedsSecretPresent = Boolean(Deno.env.get("CLOUDBEDS_API_KEY"));
   const { data: mappings, error: mappingError } = await adminClient
     .from("cloudbeds_property_map")
-    .select("hhg_property_code, cloudbeds_property_id, cloudbeds_property_name, mapping_status")
-    .order("hhg_property_code");
+    .select("hhg_property_id, cloudbeds_property_id, cloudbeds_property_name, mapping_status")
+    .order("hhg_property_id");
 
   if (mappingError) {
     return json({
