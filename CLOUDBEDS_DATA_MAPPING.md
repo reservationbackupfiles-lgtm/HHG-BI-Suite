@@ -28,11 +28,11 @@ Use internal `properties.id` as the HHG database key. HHG codes are application-
 |---|---|---:|---|
 | HHO | H Hotel | 41 | Pending API discovery |
 | HSR | S Resort | 44 | Pending API discovery |
-| PCL | Piece Lio | 36 | Pending API discovery |
-| NBR | Nacpan Beach Resort | 25 | Pending API discovery |
-| NBG | Nacpan Beach Glamping | 18 | Pending API discovery |
-| NBV | Nacpan Beach Villas | 15 | Pending API discovery |
-| JBH | J Boutique Hotel | 14 | Pending API discovery |
+| HPCL | Piece Lio | 36 | Pending API discovery |
+| HNBR | Nacpan Beach Resort | 25 | Pending API discovery |
+| HNBG | Nacpan Beach Glamping | 18 | Pending API discovery |
+| HNBV | Nacpan Beach Villas | 15 | Pending API discovery |
+| HJH | J Boutique Hotel | 14 | Pending API discovery |
 | HZG | Z Garden Hotel | 28 | Pending API discovery |
 | HVV | Villa V | 39 | Pending API discovery |
 
