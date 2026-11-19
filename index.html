@@ -1419,8 +1419,12 @@ async function checkCloudbedsBackend(){
     });
     if(error){
       let detail=error.message||'Function request failed';
-      if(error.context && typeof error.context.json==='function'){
-        try{const payload=await error.context.json();detail=payload.error||payload.message||detail;}catch(_){}
+      const response=error.context;
+      if(response && typeof response.json==='function'){
+        try{
+          const payload=await response.json();
+          detail=[payload.error,payload.details&&('Details: '+payload.details),payload.code&&('Code: '+payload.code),payload.hint&&('Hint: '+payload.hint)].filter(Boolean).join(' · ')||detail;
+        }catch(_){}
       }
       throw Error(detail);
     }
