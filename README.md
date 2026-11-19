@@ -37,3 +37,11 @@ The Pace screen needs one Pace Report upload per property per day to build its d
 - Cancellation rate = Cancelled bookings / all bookings (also by room nights). Value lost = Suggested Deposit of cancelled bookings. Where the export shows "-" for room nights, nights are taken from check-in and check-out.
 - Next year on the Compare page is whatever the ADR report already holds for that year (on the books).
 - Total rooms come from the `properties` table. Keep it accurate.
+
+
+## Cloudbeds API preparation
+
+- [Cloudbeds integration plan](./CLOUDBEDS_API_INTEGRATION.md)
+- [Cloudbeds data mapping and readiness contract](./CLOUDBEDS_DATA_MAPPING.md)
+
+The Cloudbeds integration remains in preparation mode until credentials, endpoint permissions, response schemas, and property IDs are confirmed and reconciled. Do not run the legacy `schema.sql` against the current live project without first reconciling it to the deployed schema.
