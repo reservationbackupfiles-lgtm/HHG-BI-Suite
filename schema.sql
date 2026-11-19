@@ -5,9 +5,9 @@ create table if not exists properties (
   total_rooms int not null default 0, active boolean not null default true
 );
 insert into properties (code, name, total_rooms) values
-  ('HHO','H Hotel',41), ('HSR','S Resort',45), ('PCL','Piece Lio',36),
-  ('NBR','Nacpan Beach Resort',26), ('NBG','Nacpan Beach Glamping',18),
-  ('NBV','Nacpan Beach Villas',15), ('HJH','J Boutique Hotel',14),
+  ('HHO','H Hotel',41), ('HSR','S Resort',45), ('HPCL','Piece Lio',36),
+  ('HNBR','Nacpan Beach Resort',26), ('HNBG','Nacpan Beach Glamping',18),
+  ('HNBV','Nacpan Beach Villas',15), ('HJH','J Boutique Hotel',14),
   ('HZG','Z Garden Hotel',28),
   ('HVV','Villa V',39)  -- TODO: set the real code and room count
 on conflict (code) do nothing;
