@@ -20,11 +20,11 @@ The connector must map Cloudbeds property IDs to the existing HHG property codes
 |---|---|
 | HHO | H Hotel |
 | HSR | S Resort |
-| PCL | Piece Lio |
-| NBR | Nacpan Beach Resort |
-| NBG | Nacpan Beach Glamping |
-| NBV | Nacpan Beach Villas |
-| JBH | J Boutique Hotel |
+| HPCL | Piece Lio |
+| HNBR | Nacpan Beach Resort |
+| HNBG | Nacpan Beach Glamping |
+| HNBV | Nacpan Beach Villas |
+| HJH | J Boutique Hotel |
 | HZG | Z Garden Hotel |
 | HVV | Villa V |
 
