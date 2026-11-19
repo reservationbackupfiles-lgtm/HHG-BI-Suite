@@ -92,3 +92,6 @@ The following backend foundation has been added to the repository:
 
 ## Current implementation status
 **Backend scaffold prepared; API integration remains pre-connection.** No Cloudbeds credential has been installed, no live API request has been made, and no API-sourced data is being written to production tables yet. The existing report upload workflow remains the source of record until the API integration has been tested and reconciled.
+## Admin property mapping management
+
+The Cloudbeds API page now provides an admin-only property mapping editor. It saves a supplied Cloudbeds property ID against the existing HHG `properties.id` through the authenticated Edge Function. Saved entries remain `pending`; they are not treated as verified until matched against actual Cloudbeds API property data. Blank IDs can be cleared without deleting HHG property records. Production synchronization remains disabled.
