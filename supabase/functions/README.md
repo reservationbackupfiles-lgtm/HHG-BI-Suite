@@ -48,3 +48,7 @@ The function reports whether the secret exists, mapping rows, and the latest syn
 - Implement and test a read-only property discovery call.
 - Add endpoint-specific sync functions only after confirming response schemas, pagination, date semantics, and stable source IDs.
 - Reconcile API results against manual exports before production writes.
+ 
+### Admin property mapping management
+
+The `cloudbeds-admin` function also supports the authenticated admin action `save_mapping`. It validates the selected HHG `properties.id`, then inserts/updates the Cloudbeds ID as `pending`. A blank Cloudbeds ID clears that mapping. Duplicate Cloudbeds IDs are rejected by the database unique constraint. The UI never marks a mapping verified; verification must happen against actual Cloudbeds API property data before any synchronization.
