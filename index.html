@@ -1405,58 +1405,110 @@ function escapeHtml(value){
   return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 /* Cloudbeds API readiness — authenticated admin status only. */
+async function cloudbedsAdminRequest(payload){
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  if(sessionError||!sessionData?.session?.access_token)throw Error('Please sign in again to HHG BI Suite.');
+  const {data,error}=await sb.functions.invoke('cloudbeds-admin',{
+    body:payload,
+    headers:{Authorization:'Bearer '+sessionData.session.access_token}
+  });
+  if(error){
+    let detail=error.message||'Function request failed';
+    const response=error.context;
+    if(response&&typeof response.json==='function'){
+      try{
+        const p=await response.json();
+        detail=[p.error,p.details&&('Details: '+p.details),p.code&&('Code: '+p.code),p.hint&&('Hint: '+p.hint)].filter(Boolean).join(' · ')||detail;
+      }catch(_){}
+    }
+    throw Error(detail);
+  }
+  if(data?.error)throw Error(data.error+(data.details?' · '+data.details:''));
+  return data;
+}
 async function checkCloudbedsBackend(){
   const button=$('#cbBackendCheck'), output=$('#cbBackendResult');
   if(!button||!output||S.role!=='admin')return;
   button.disabled=true;
   output.textContent='Checking secure Supabase backend…';
   try{
-    const {data:sessionData,error:sessionError}=await sb.auth.getSession();
-    if(sessionError||!sessionData?.session?.access_token)throw Error('Please sign in again to HHG BI Suite.');
-    const {data,error}=await sb.functions.invoke('cloudbeds-admin',{
-      body:{action:'status'},
-      headers:{Authorization:'Bearer '+sessionData.session.access_token}
-    });
-    if(error){
-      let detail=error.message||'Function request failed';
-      const response=error.context;
-      if(response && typeof response.json==='function'){
-        try{
-          const payload=await response.json();
-          detail=[payload.error,payload.details&&('Details: '+payload.details),payload.code&&('Code: '+payload.code),payload.hint&&('Hint: '+payload.hint)].filter(Boolean).join(' · ')||detail;
-        }catch(_){}
-      }
-      throw Error(detail);
-    }
+    const data=await cloudbedsAdminRequest({action:'status'});
     if(!data?.ok)throw Error(data?.error||'Unexpected backend response');
-    const mapped=(data.mappings||[]).filter(p=>p.mapping_status==='verified').length;
-    output.textContent='Backend connected · Admin access verified · API credentials '+(data.cloudbeds_credentials_configured?'configured':'not configured')+' · Verified property mappings '+mapped+' · Production sync disabled.';
+    const verified=(data.mappings||[]).filter(p=>p.mapping_status==='verified').length;
+    output.textContent='Backend connected · Admin access verified · API credentials '+(data.cloudbeds_credentials_configured?'configured':'not configured')+' · Verified property mappings '+verified+' · Production sync disabled.';
+    renderCloudbedsMappings(data.mappings||[]);
     toast('Cloudbeds backend readiness check passed.');
   }catch(e){
     output.textContent='Backend check failed: '+(e?.message||String(e));
     toast('Cloudbeds backend check failed. See details on this page.','error',5000);
   }finally{button.disabled=false;}
 }
+function renderCloudbedsMappings(mappings){
+  const host=$('#cbMappingRows');
+  if(!host)return;
+  const byId=new Map((mappings||[]).map(m=>[String(m.hhg_property_id),m]));
+  const props=(S.props||[]).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
+  host.innerHTML=props.map(p=>{
+    const id=String(p.id), code=String(p.code||''), m=byId.get(id);
+    const status=m?.mapping_status||'not mapped';
+    const note=status==='verified'?'Verified against Cloudbeds':status==='pending'?'Saved · awaiting Cloudbeds verification':status==='disabled'?'Disabled':'Awaiting Cloudbeds property ID';
+    return `<tr>
+      <td>${escapeHtml(p.name||code)}</td>
+      <td>${escapeHtml(code)}</td>
+      <td><input type="text" data-cb-id="${escapeHtml(id)}" value="${escapeHtml(m?.cloudbeds_property_id||'')}" placeholder="Enter Cloudbeds property ID" aria-label="Cloudbeds property ID for ${escapeHtml(p.name||code)}" style="width:100%;min-width:150px;padding:8px;border:1px solid var(--line);border-radius:6px"></td>
+      <td><span class="${status==='verified'?'up':'mu'}">${escapeHtml(status)}</span><div class="note">${escapeHtml(note)}</div></td>
+      <td><button class="btn" type="button" data-cb-save="${escapeHtml(id)}">Save</button> <button class="btn" type="button" data-cb-clear="${escapeHtml(id)}">Clear</button></td>
+    </tr>`;
+  }).join('');
+  host.querySelectorAll('[data-cb-save]').forEach(button=>button.onclick=()=>saveCloudbedsMapping(button.dataset.cbSave,false));
+  host.querySelectorAll('[data-cb-clear]').forEach(button=>button.onclick=()=>saveCloudbedsMapping(button.dataset.cbClear,true));
+}
+async function saveCloudbedsMapping(propertyId,clear){
+  const input=document.querySelector('[data-cb-id="'+CSS.escape(String(propertyId))+'"]');
+  const cloudbedsId=clear?'':String(input?.value||'').trim();
+  if(!clear&&!cloudbedsId){toast('Enter a Cloudbeds property ID first.','error');return;}
+  const property=(S.props||[]).find(p=>String(p.id)===String(propertyId));
+  if(!property){toast('HHG property not found.','error');return;}
+  const buttons=[...document.querySelectorAll('[data-cb-save="'+CSS.escape(String(propertyId))+'"],[data-cb-clear="'+CSS.escape(String(propertyId))+'"]')];
+  buttons.forEach(b=>b.disabled=true);
+  try{
+    const result=await cloudbedsAdminRequest({
+      action:'save_mapping',
+      hhg_property_id:Number(propertyId),
+      cloudbeds_property_id:cloudbedsId,
+      cloudbeds_property_name:clear?'':property.name
+    });
+    if(!result?.ok)throw Error(result?.error||'Mapping update failed');
+    toast(clear?'Property mapping cleared.':'Property mapping saved as pending.');
+    const status=await cloudbedsAdminRequest({action:'status'});
+    renderCloudbedsMappings(status.mappings||[]);
+    const output=$('#cbBackendResult');
+    if(output)output.textContent='Backend connected · Admin access verified · API credentials '+(status.cloudbeds_credentials_configured?'configured':'not configured')+' · Verified property mappings '+(status.mappings||[]).filter(p=>p.mapping_status==='verified').length+' · Production sync disabled.';
+  }catch(e){
+    toast('Could not save mapping: '+(e?.message||String(e)),'error',6000);
+  }finally{buttons.forEach(b=>b.disabled=false);}
+}
 function api(){
   $('#ttl').textContent='Cloudbeds API Integration';
   if(S.role!=='admin') return empty('Admins only.');
   const properties=(S.props||[]).map(p=>{
     const code=String(p.code||'');
-    const note=code==='HJH'?'Review code: HHG operational code is JBH.':code==='NBR'?'Review inventory: latest HHG correction is 25 rooms.':'Awaiting Cloudbeds property ID mapping.';
+    const note=code==='NBR'?'Inventory reference: latest HHG correction is 25 rooms.':'Cloudbeds ID must be confirmed from Cloudbeds before verification.';
     return [p.name||code,code,note];
   });
   $('#view').innerHTML=`
     <section class="p">
       <h3>Cloudbeds API integration</h3>
-      <p class="note">Supabase backend readiness can now be checked using your existing HHG BI Suite admin login. This does not connect to Cloudbeds or import data.</p>
+      <p class="note">Supabase backend readiness can be checked using your existing HHG BI Suite admin login. This does not connect to Cloudbeds or import data.</p>
       <button class="btn" id="cbBackendCheck" type="button">Check Supabase backend</button>
       <p id="cbBackendResult" class="note" role="status" aria-live="polite">Not tested in this session.</p>
       <p class="note">Cloudbeds credentials belong only in Supabase Edge Function secrets. Never paste API keys into this website.</p>
     </section>
     <section class="p">
       <h3>HHG property mapping</h3>
-      <p class="note">Property IDs must be verified before synchronization. Existing Supabase property IDs and Cloudbeds IDs are different identifiers.</p>
-      ${tbl(['Property','HHG code','Mapping notes'],properties.map(p=>p.map(escapeHtml)))}
+      <p class="note">Enter a Cloudbeds property ID only after confirming it from Cloudbeds. Saving records it as <b>pending</b>; it does not mark it verified. The ID must be checked against Cloudbeds API property data before synchronization.</p>
+      <div style="overflow-x:auto"><table><thead><tr><th>Property</th><th>HHG code</th><th>Cloudbeds property ID</th><th>Mapping status</th><th>Actions</th></tr></thead><tbody id="cbMappingRows">${properties.map(p=>'<tr>'+p.map(v=>'<td>'+escapeHtml(v)+'</td>').join('')+'</tr>').join('')}</tbody></table></div>
+      <p class="note">Do not guess IDs. Blank mappings are expected until Cloudbeds API access is available. Clearing a mapping removes only its Cloudbeds link, not the HHG property.</p>
     </section>
     <section class="p">
       <h3>Planned synchronization</h3>
@@ -1464,6 +1516,7 @@ function api(){
       <button class="btn" disabled type="button">Sync now · Not available yet</button>
     </section>`;
   $('#cbBackendCheck').onclick=checkCloudbedsBackend;
+  checkCloudbedsBackend();
 }
 const V = {dash, compare, pace, res, cancel, recon, reports, admin, users, api};
 function show(v){
