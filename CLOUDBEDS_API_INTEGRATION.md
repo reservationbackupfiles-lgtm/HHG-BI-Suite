@@ -95,3 +95,10 @@ The following backend foundation has been added to the repository:
 ## Admin property mapping management
 
 The Cloudbeds API page now provides an admin-only property mapping editor. It saves a supplied Cloudbeds property ID against the existing HHG `properties.id` through the authenticated Edge Function. Saved entries remain `pending`; they are not treated as verified until matched against actual Cloudbeds API property data. Blank IDs can be cleared without deleting HHG property records. Production synchronization remains disabled.
+
+
+## Data mapping audit
+
+See [CLOUDBEDS_DATA_MAPPING.md](./CLOUDBEDS_DATA_MAPPING.md) for the proposed field-level contract, current application destinations, duplicate keys, date/currency rules and pre-sync validation checklist.
+
+**Live-schema caution:** the committed legacy `schema.sql` does not describe the current deployed database. It defines `properties.code` and legacy reporting tables, while the live `properties` table reported by the user uses `id, name, rooms, sort`, and the current frontend queries `adr_daily`, `adr_history`, `pace_snapshots`, `cancellations` and `transaction_details`. Do not rerun `schema.sql` against the live project. Obtain a current schema export before proposing further database changes.
