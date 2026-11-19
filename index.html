@@ -681,6 +681,7 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
   <button class="nav" data-v="pace"><span class="nav-mark">⌁</span>Pace</button>
   <button class="nav" data-v="res"><span class="nav-mark">▤</span>Reservations</button>
   <button class="nav" data-v="cancel"><span class="nav-mark">↘</span>Cancellations</button>
+  <button class="nav" data-v="rates" id="navRates" hidden><span class="nav-mark">₱</span>Rate Management</button>
   <button class="nav" data-v="recon" id="navRecon" hidden><span class="nav-mark">◫</span>Revenue Monitoring</button>
   <button class="nav" data-v="reports"><span class="nav-mark">▧</span>Reports</button>
 
@@ -719,6 +720,7 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="importer.js?v=20261109-transactions"></script>
+<script src="rate-management.js?v=20261119"></script>
 <script>
 const sb = supabase.createClient(CFG.url, CFG.key);
 const $ = s => document.querySelector(s);
@@ -906,7 +908,7 @@ async function start(user){
   S.role = p?.role || 'viewer';
 
   $('#me').textContent = user.email + ' (' + S.role + ')';
-  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navRecon').hidden = $('#navApi').hidden = S.role !== 'admin';
+  $('#navAdmin').hidden = $('#navUsers').hidden = $('#navRecon').hidden = $('#navApi').hidden = $('#navRates').hidden = S.role !== 'admin';
 
   $('#acc').textContent =
     S.role !== 'admin' && (p?.view_from || p?.view_to)
@@ -1518,15 +1520,15 @@ function api(){
   $('#cbBackendCheck').onclick=checkCloudbedsBackend;
   checkCloudbedsBackend();
 }
-const V = {dash, compare, pace, res, cancel, recon, reports, admin, users, api};
+const V = {dash, compare, pace, res, cancel, recon, reports, admin, users, api, rates:()=>RateManagement.render({sb,props:S.props,userId:S.user?.id,email:S.user?.email})};
 function show(v){
   // Revenue Monitoring is restricted to authenticated admin users.
-  if (v === 'recon' && S.role !== 'admin') {
+  if ((v === 'recon' || v === 'rates') && S.role !== 'admin') {
     S.view = 'dash';
     charts.forEach(c=>c.destroy()); charts = [];
     document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v==='dash'));
     $('#ttl').textContent = 'Access restricted';
-    $('#view').innerHTML = '<p class="mu">The Revenue Monitoring page is available to administrators only.</p>';
+    $('#view').innerHTML = '<p class="mu">This page is available to administrators only.</p>';
     return;
   }
   if (!V[v]) return;
