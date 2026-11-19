@@ -942,10 +942,10 @@ async function load(){
       fetchAll('adr_history').catch(e => { console.warn('ADR history unavailable; using existing Pace snapshots.', e); return []; }),
       fetchAll('cancellations').catch(e => { console.warn('Cancellation data unavailable for Daily Pickup.', e); return []; })
     ]);
-    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'JBH','Nacpan Beach Glamping':'NBG','Nacpan Beach Resort':'NBR','Nacpan Beach Villas':'NBV','Piece Lio':'PCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
+    const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'HJH','Nacpan Beach Glamping':'HNBG','Nacpan Beach Resort':'HNBR','Nacpan Beach Villas':'HNBV','Piece Lio':'HPCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     // HHG room inventory confirmed by user (11 Nov 2026). This is the
     // capacity source for occupancy, pace, and room-night calculations.
-    const roomCountByCode = {HHO:41,HSR:44,NBR:25,NBG:18,NBV:15,PCL:36,HZG:28,JBH:14,HVV:39};
+    const roomCountByCode = {HHO:41,HSR:44,HNBR:25,HNBG:18,HNBV:15,HPCL:36,HZG:28,HJH:14,HVV:39};
     S.props = rawProps.map(p=>{
       const code = codeByName[p.name]||String(p.id);
       const rooms = roomCountByCode[code] ?? (+p.rooms||0);
@@ -1320,7 +1320,7 @@ function recon(){
     box.innerHTML=`
       <div class="rm-section-head"><div><span class="rm-overline">ACCOMMODATION REVENUE MONITORING</span><h3>Revenue overview</h3><p>Selected transaction population · Room revenue grouped by Service Date.</p></div><span class="rm-period">${fmt(filtered.length)} records</span></div>
       <p class="rm-filter-note">${escapeHtml(periodLabel)}</p>
-      <p class="rm-filter-note">Duplicate-import control: ${fmt(excludedDuplicateRows)} November source rows excluded for HHO, JBH and NBG because they are already represented in their reconciled historical files. The same source file remains included for the other properties.</p>
+      <p class="rm-filter-note">Duplicate-import control: ${fmt(excludedDuplicateRows)} November source rows excluded for HHO, HJH and HNBG because they are already represented in their reconciled historical files. The same source file remains included for the other properties.</p>
       <div class="rm-kpis rm-kpis-primary" id="rmOverview">
         <div class="c rm-kpi-main"><small>ROOM REVENUE</small><b>${money(roomRevenue)}</b><i>${fmt(roomRows.length)} posted room-charge records · Service Date</i></div>
         <div class="c"><small>ANCILLARY REVENUE</small><b>${money(ancillary)}</b><i>Items, add-ons and services · signed amount</i></div>
@@ -1493,7 +1493,7 @@ function api(){
   if(S.role!=='admin') return empty('Admins only.');
   const properties=(S.props||[]).map(p=>{
     const code=String(p.code||'');
-    const note=code==='NBR'?'Inventory reference: latest HHG correction is 25 rooms.':'Cloudbeds ID must be confirmed from Cloudbeds before verification.';
+    const note=code==='HNBR'?'Inventory reference: latest HHG correction is 25 rooms.':'Cloudbeds ID must be confirmed from Cloudbeds before verification.';
     return [p.name||code,code,note];
   });
   $('#view').innerHTML=`
