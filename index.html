@@ -947,7 +947,7 @@ async function load(){
     const codeByName = {'H Hotel':'HHO','J Boutique Hotel':'HJH','Nacpan Beach Glamping':'HNBG','Nacpan Beach Resort':'HNBR','Nacpan Beach Villas':'HNBV','Piece Lio':'HPCL','S Resort':'HSR','Z Garden Hotel':'HZG','Villa V':'HVV'};
     // HHG room inventory confirmed by user (11 Nov 2026). This is the
     // capacity source for occupancy, pace, and room-night calculations.
-    const roomCountByCode = {HHO:41,HSR:44,HNBR:25,HNBG:18,HNBV:15,HPCL:36,HZG:28,HJH:14,HVV:39};
+    const roomCountByCode = {HHO:41,HSR:44,HNBR:26,HNBG:18,HNBV:15,HPCL:36,HZG:28,HJH:14,HVV:39};
     S.props = rawProps.map(p=>{
       const code = codeByName[p.name]||String(p.id);
       const rooms = roomCountByCode[code] ?? (+p.rooms||0);
@@ -1495,7 +1495,7 @@ function api(){
   if(S.role!=='admin') return empty('Admins only.');
   const properties=(S.props||[]).map(p=>{
     const code=String(p.code||'');
-    const note=code==='HNBR'?'Inventory reference: latest HHG correction is 25 rooms.':'Cloudbeds ID must be confirmed from Cloudbeds before verification.';
+    const note=code==='HNBR'?'Inventory reference: latest HHG correction is 26 rooms.':'Cloudbeds ID must be confirmed from Cloudbeds before verification.';
     return [p.name||code,code,note];
   });
   $('#view').innerHTML=`
