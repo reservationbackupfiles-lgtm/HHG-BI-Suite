@@ -1646,13 +1646,13 @@ function bindDailyPickup(){
     const labels=dates.map(d=>{const x=new Date((monthly?d+'-01':d)+'T00:00:00Z');return monthly?x.toLocaleString('en-US',{month:'short',timeZone:'UTC'}):`${x.getUTCMonth()+1}/${x.getUTCDate()}`});
     const datasets=[];
     if(mode==='Revenue'){
-      datasets.push({type:'bar',label:'Total Booked Revenue (incl. cancelled)',data:revBooked,backgroundColor:'#0E7C86',borderRadius:3});
-      datasets.push({type:'bar',label:'Cancelled Revenue',data:revCancelled,backgroundColor:'#B03A2E',borderRadius:3});
-      datasets.push({type:'bar',label:'Rebooked Revenue',data:revRebooked,backgroundColor:'#F59E0B',borderRadius:3});
-      datasets.push({type:'line',label:'Net Revenue',data:revNet,borderColor:'#2457E6',backgroundColor:'#2457E6',pointRadius:3,tension:.25,fill:false});
+      datasets.push({type:'bar',label:'Total Booked Revenue (incl. cancelled)',data:revBooked,backgroundColor:'#075B46',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancelled Revenue',data:revCancelled,backgroundColor:'#A66A4A',borderRadius:3});
+      datasets.push({type:'bar',label:'Rebooked Revenue',data:revRebooked,backgroundColor:'#D6AD62',borderRadius:3});
+      datasets.push({type:'line',label:'Net Revenue',data:revNet,borderColor:'#063D32',backgroundColor:'#063D32',pointRadius:3,tension:.25,fill:false});
     }else if(mode==='Total'){
-      datasets.push({type:'bar',label:'Total Reservations (incl. cancelled)',data:countBooked,backgroundColor:'#0E7C86',borderRadius:3});
-      datasets.push({type:'bar',label:'Cancellations',data:countCancelled,backgroundColor:'#B03A2E',borderRadius:3});
+      datasets.push({type:'bar',label:'Total Reservations (incl. cancelled)',data:countBooked,backgroundColor:'#075B46',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancellations',data:countCancelled,backgroundColor:'#A66A4A',borderRadius:3});
     }else{
       const byHotel=mode==='By Hotel';
       const rows=byHotel
@@ -1661,15 +1661,15 @@ function bindDailyPickup(){
       const bookedByRow=rows.map(row=>reservations.filter(r=>byHotel?r.property===row.key:(r.source||r.source_category||'Unknown')===row.key).reduce((a,r)=>a+valueBooked(r),0));
       const cancelledByRow=rows.map(row=>cancellations.filter(r=>byHotel?r.property===row.key:(r.source||r.source_category||'Unknown')===row.key).reduce((a,r)=>a+valueCancelled(r),0));
       labels.splice(0,labels.length,...rows.map(r=>r.label));
-      datasets.push({type:'bar',label:'Total Booked Revenue (incl. cancelled)',data:bookedByRow,backgroundColor:'#0E7C86',borderRadius:3});
-      datasets.push({type:'bar',label:'Cancelled Revenue',data:cancelledByRow,backgroundColor:'#B03A2E',borderRadius:3});
+      datasets.push({type:'bar',label:'Total Booked Revenue (incl. cancelled)',data:bookedByRow,backgroundColor:'#075B46',borderRadius:3});
+      datasets.push({type:'bar',label:'Cancelled Revenue',data:cancelledByRow,backgroundColor:'#A66A4A',borderRadius:3});
     }
     const canvas=$('#dailyPickupChart'); if(!canvas)return;
     const existing=charts.find(c=>c.canvas===canvas); if(existing){existing.destroy();charts=charts.filter(c=>c!==existing)}
     const chart=new Chart(canvas,{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${mode==='Total'?fmt(c.parsed.y):php(c.parsed.y)}`}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>mode==='Total'?fmt(v):v>=1e6?(v/1e6).toFixed(1)+'M':fmt(v)}}}}});
     charts.push(chart);
     const totalEl=$('#dailyPickupSummary');
-    if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><span style="color:#F59E0B">Rebooked: ${php(totalRebooked)}</span><strong>Net: ${php(totalNet)}</strong>`:mode==='By Hotel'||mode==='By Source'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
+    if(totalEl) totalEl.innerHTML=mode==='Revenue'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span><span style="color:#D6AD62">Rebooked: ${php(totalRebooked)}</span><strong>Net: ${php(totalNet)}</strong>`:mode==='By Hotel'||mode==='By Source'?`<span class="up">Booked: ${php(totalBooked)}</span><span class="dn">Cancelled: ${php(totalCancelled)}</span>`:`<span class="up">Bookings: ${fmt(reservations.length)}</span><span class="dn">Cancellations: ${fmt(cancellations.length)}</span>`;
     const note=$('#dailyPickupNote'); if(note) note.textContent=cancellations.length ? `Total booked revenue includes all reservations, including those later cancelled, grouped by booking date. Rebooked revenue is identified from Reservation Source or Reservation Source Category containing 'rebook' and grouped by booking date; it is included in Total Booked Revenue and is not added again to Net. Cancelled revenue uses the original value of every cancelled reservation, grouped by cancellation date, to show potential sales lost.` : 'No cancellation records were loaded. Check Supabase permissions for the cancellations table. Total booked revenue includes all reservations, including those later cancelled.';
   };
   document.querySelectorAll('[data-pick-days]').forEach(b=>b.onclick=()=>{days=+b.dataset.pickDays;year=null;render()});
