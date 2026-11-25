@@ -1731,7 +1731,7 @@ function pace(){
    <div class="c"><small>Occupancy for the month</small><b>${pct(TA?t/TA:NaN)}</b><i>of ${fmt(TA)} room nights</i></div>
    <div class="c"><small>Added since the previous upload</small><b class="up">${pr==null?'–':'+'+fmt(t-pr)}</b><i>${pr==null?'':fmt(pr)+' before'}</i></div>
    <div class="c"><small>Missing uploads</small><b class="${miss?'dn':''}">${miss}</b><i>days with no file this month</i></div></div>
-  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by upload day</h3><table class="dm${S.ex?' open':''}">${head}${body}</table>
+  <div class="p"><h3>Room nights on the books for ${MN[mo-1]} ${ty}, by snapshot upload date</h3><p class="note"><b>Stay month:</b> ${MN[mo-1]} ${ty} &nbsp;·&nbsp; <b>Upload month:</b> ${MN[m-1]} ${y}. The column dates are the actual dates each ADR report was uploaded, not the target stay month.</p><table class="dm${S.ex?' open':''}">${head}${body}</table>
   <p class="note">Pace is based on the Accommodations Booked values in each uploaded ADR report. Each column is an upload date; percentages show booked room nights against monthly room capacity. Green = increase; red = decrease. Yellow = no upload recorded for that date.</p></div>`;
 }
 
