@@ -651,6 +651,46 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 @media(max-width:1200px){.rm-control-grid{grid-template-columns:minmax(0,1fr) minmax(270px,.85fr)}}
 @media(max-width:900px){.rm-control-grid{grid-template-columns:1fr}.rm-filter-panel .rm-filters-advanced{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.rm-filter-panel .rm-filters-advanced{grid-template-columns:1fr}.rm-filter-panel .rm-filters-advanced>div:first-child,.rm-filter-panel #txRefresh{grid-column:auto}}
+
+/* Revenue Monitoring KPI rows: equal-width, fluid and zoom-responsive */
+#rmOverview.rm-kpis-primary,
+.rm-kpis-secondary{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  gap:10px;
+  width:100%;
+}
+#rmOverview.rm-kpis-primary>.c,
+.rm-kpis-secondary>.c{
+  min-width:0;
+  width:100%;
+}
+#rmOverview.rm-kpis-primary>.c b,
+.rm-kpis-secondary>.c b{
+  font-size:clamp(15px,1.25vw,21px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#rmOverview.rm-kpis-primary>.rm-kpi-main b{
+  font-size:clamp(18px,1.55vw,27px);
+}
+@media(max-width:1400px){
+  #rmOverview.rm-kpis-primary,.rm-kpis-secondary{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+}
+@media(max-width:1100px){
+  #rmOverview.rm-kpis-primary,.rm-kpis-secondary{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+}
+@media(max-width:850px){
+  #rmOverview.rm-kpis-primary,.rm-kpis-secondary{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media(max-width:520px){
+  #rmOverview.rm-kpis-primary,.rm-kpis-secondary{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
+  #rmOverview.rm-kpis-primary>.c,.rm-kpis-secondary>.c{padding:11px 10px}
+  #rmOverview.rm-kpis-primary>.c b,.rm-kpis-secondary>.c b{font-size:clamp(14px,4vw,18px)}
+  #rmOverview.rm-kpis-primary>.rm-kpi-main b{font-size:clamp(16px,4.5vw,22px)}
+}
+
 </style>
 </head>
 <body>
