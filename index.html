@@ -633,6 +633,24 @@ tr.tot td{border-top:2px solid var(--hhg-emerald)}
 .rm-upload-controls select,.rm-upload-controls input{width:100%;min-height:38px;padding:7px 9px}
 @media(max-width:1100px){.rm-filters-advanced{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-upload-controls{grid-template-columns:1fr 1fr}.rm-upload-controls button{grid-column:1/-1}}
 @media(max-width:600px){.rm-filters-advanced,.rm-upload-controls{grid-template-columns:1fr}.rm-upload-controls button{grid-column:auto}}
+
+/* Revenue Monitoring compact header and balanced filter/upload panels */
+.rm-page-heading{margin:0 0 12px;padding:0 2px}
+.rm-page-heading h2{font-size:20px;line-height:1.25;margin:0 0 4px;color:#075b46;font-weight:800}
+.rm-page-heading p{font-size:11px;margin:0;color:#718078}
+.rm-control-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,1fr);gap:14px;align-items:stretch;margin-bottom:16px}
+.rm-control-grid>.p{margin:0;min-width:0;padding:15px}
+.rm-filter-panel .rm-panel-title,.rm-upload-panel .rm-panel-title{margin:0 0 10px}
+.rm-filter-panel .rm-filters-advanced{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;align-items:end}
+.rm-filter-panel .rm-filters-advanced>div:first-child{grid-column:1/-1}
+.rm-filter-panel #txRefresh{grid-column:1/-1;width:100%;margin-top:2px}
+.rm-filter-panel .rm-filter-note{margin-bottom:0;line-height:1.45}
+.rm-control-grid .rm-upload-controls{grid-template-columns:1fr;gap:10px;align-items:stretch}
+.rm-control-grid .rm-upload-controls button{width:100%;min-height:38px}
+.rm-control-grid .rm-upload-panel .note{font-size:10px;line-height:1.45;margin:10px 0 0}
+@media(max-width:1200px){.rm-control-grid{grid-template-columns:minmax(0,1fr) minmax(270px,.85fr)}}
+@media(max-width:900px){.rm-control-grid{grid-template-columns:1fr}.rm-filter-panel .rm-filters-advanced{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.rm-filter-panel .rm-filters-advanced{grid-template-columns:1fr}.rm-filter-panel .rm-filters-advanced>div:first-child,.rm-filter-panel #txRefresh{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -1136,28 +1154,28 @@ function recon(){
   const currentMonth=today().slice(0,7);
   const monthStart=currentMonth+'-01';
   $('#view').innerHTML=`
-    <div class="recon-intro p rm-hero">
-      <div><div class="recon-eyebrow">HHG MANAGEMENT REPORTING · ACTUAL PERFORMANCE</div>
-      <h2>Accommodation revenue monitoring, grounded in posted room charges.</h2>
-      <p>Review Cloudbeds transactions by transaction date, check-in date and business date. Revenue categories remain separated so collections, taxes and fees are not mistaken for room revenue.</p>
-      <div class="recon-status"><span class="recon-status-dot"></span>Admin access · Read-only transaction monitoring</div></div>
-      <div class="rm-hero-note"><strong>REVENUE ATTRIBUTION</strong><span>Service Date</span><small>Room charges are grouped by the accommodation service date. The three date filters below independently select the transaction population.</small></div>
+    <div class="rm-page-heading">
+      <h2>Revenue Monitoring</h2>
+      <p>Posted accommodation charges · taxes, fees and payments shown separately</p>
     </div>
-    <div class="rm-toolbar">
-      <div class="rm-filters rm-filters-advanced">
-        <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
-        <div class="rm-date-filter"><label for="rmTransactionMode">Transaction Date</label><select id="rmTransactionMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmTransactionRange"><input id="rmTransactionFrom" type="date" value="${monthStart}" aria-label="Transaction date from"><input id="rmTransactionTo" type="date" value="${today()}" aria-label="Transaction date to"></div></div>
-        <div class="rm-date-filter"><label for="rmCheckinMode">Check-in Date</label><select id="rmCheckinMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmCheckinRange" hidden><input id="rmCheckinFrom" type="date" aria-label="Check-in date from"><input id="rmCheckinTo" type="date" aria-label="Check-in date to"></div></div>
-        <div class="rm-date-filter"><label for="rmBusinessMode">Revenue Service Date</label><select id="rmBusinessMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmBusinessRange" hidden><input id="rmBusinessFrom" type="date" aria-label="Revenue service date from"><input id="rmBusinessTo" type="date" aria-label="Revenue service date to"></div></div>
-        <button class="btn" id="txRefresh" type="button" style="margin:0;height:38px">Apply Filters</button>
-      </div>
-      <div class="rm-filter-note">Revenue uses Revenue Service Date. Payments and refunds use Transaction Date. Check-in Date remains an optional additional filter. “All Dates” does not restrict that date field.</div>
+    <div class="rm-control-grid">
+      <section class="p rm-toolbar rm-filter-panel">
+        <div class="rm-panel-title"><div><h3>Filters</h3><p>Choose the transaction population to review.</p></div></div>
+        <div class="rm-filters rm-filters-advanced">
+          <div><label for="rmProperty">Property</label><select id="rmProperty"><option value="">All properties</option>${propOptions}</select></div>
+          <div class="rm-date-filter"><label for="rmTransactionMode">Transaction Date</label><select id="rmTransactionMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmTransactionRange"><input id="rmTransactionFrom" type="date" value="${monthStart}" aria-label="Transaction date from"><input id="rmTransactionTo" type="date" value="${today()}" aria-label="Transaction date to"></div></div>
+          <div class="rm-date-filter"><label for="rmCheckinMode">Check-in Date</label><select id="rmCheckinMode"><option value="all" selected>All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmCheckinRange" hidden><input id="rmCheckinFrom" type="date" aria-label="Check-in date from"><input id="rmCheckinTo" type="date" aria-label="Check-in date to"></div></div>
+          <div class="rm-date-filter"><label for="rmBusinessMode">Revenue Service Date</label><select id="rmBusinessMode"><option value="month" selected>Current Month</option><option value="all">All Dates</option><option value="custom">Custom Range</option></select><div class="rm-date-range" id="rmBusinessRange" hidden><input id="rmBusinessFrom" type="date" aria-label="Revenue service date from"><input id="rmBusinessTo" type="date" aria-label="Revenue service date to"></div></div>
+          <button class="btn" id="txRefresh" type="button" style="margin:0;height:38px">Apply Filters</button>
+        </div>
+        <div class="rm-filter-note">Room revenue is grouped by Service Date. Payments and refunds use Transaction Date. Check-in Date is an optional additional filter.</div>
+      </section>
+      <section class="p rm-upload-panel" id="rmUploadPanel">
+        <div class="rm-panel-title"><div><h3>Transaction Data Upload</h3><p>Upload one consolidated Expanded Transaction Report for a property.</p></div><span class="rm-review-tag">Admin only</span></div>
+        <div class="rm-upload-controls"><div><label for="rmUploadProperty">Property</label><select id="rmUploadProperty">${props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('')}</select></div><div><label for="rmTransactionFile">Expanded Transaction Report</label><input id="rmTransactionFile" type="file" accept=".xlsx,.xls,.csv"></div><button class="btn" id="rmUploadButton" type="button" style="margin:0">Upload Transactions</button></div>
+        <p class="note" id="rmUploadMessage">Existing monitoring data is not deleted. Source values are retained in raw_data.</p>
+      </section>
     </div>
-    <section class="p rm-upload-panel" id="rmUploadPanel">
-      <div class="rm-panel-title"><div><h3>Transaction Data Upload</h3><p>Separate upload entry for Expanded Transaction Reports. Existing monitoring data is not deleted.</p></div><span class="rm-review-tag">Admin only</span></div>
-      <div class="rm-upload-controls"><div><label for="rmUploadProperty">Property</label><select id="rmUploadProperty">${props.map(p=>`<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.name)}</option>`).join('')}</select></div><div><label for="rmTransactionFile">Expanded Transaction Report</label><input id="rmTransactionFile" type="file" accept=".xlsx,.xls,.csv"></div><button class="btn" id="rmUploadButton" type="button" style="margin:0">Upload Transactions</button></div>
-      <p class="note" id="rmUploadMessage">Choose one consolidated Expanded Transaction Report for the selected property. Dates are normalized before saving; original source values remain in raw_data.</p>
-    </section>
     <div id="txContent"><p class="mu">Loading revenue summary…</p></div>`;
   const box=$('#txContent');
   const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
